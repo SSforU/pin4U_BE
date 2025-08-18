@@ -1,0 +1,40 @@
+// pin4U_BE/build.gradle
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.4'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+group = 'io.github.ssforu'
+version = '0.0.1-SNAPSHOT'
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-validation:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
+
+    // ★ 핵심 두 줄 (PG 17.5 지원)
+    implementation 'org.flywaydb:flyway-core:11.7.2'
+    implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
+
+    runtimeOnly 'org.postgresql:postgresql:42.7.7'
+
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.5.4'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools:3.5.4'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.5.4'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.4'
+    testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
+    testImplementation 'org.testcontainers:postgresql:1.20.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
+
+    // WebClient 사용 (필수)
+    implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
+}
+
+tasks.named('test') { useJUnitPlatform() }
+springBoot { mainClass = "io.github.ssforu.pin4u.Pin4uApplication" }
+tasks.named("bootRun") { mainClass.set("io.github.ssforu.pin4u.Pin4uApplication") }
