@@ -7,13 +7,20 @@ spring:
 
 
   jpa:
+    open-in-view: false
     hibernate:
-      ddl-auto: update    # 엔티티 변경 자동 반영(편하게 개발)
+      ddl-auto: none    # 엔티티 변경 자동 반영(편하게 개발)
     show-sql: true
     properties:
-      hibernate.format_sql: true
+      hibernate.hbm2ddl.auto: none
+    jackson:
+          property-naming-strategy: SNAKE_CASE
+
+    hibernate.format_sql: none
   flyway:
-    enabled: false #초기 개발 동안 마이그레잇녀 비활성화
+    enabled: true
+    locations: classpath:db/migration
+    repair-on-migrate: true   # (옵션) 체크섬 꼬였을 때 자동 repair
     baseline-on-migrate: true
 
 app:
@@ -30,3 +37,17 @@ kakao:
   api:
     base-url: https://dapi.kakao.com
     key: ${KAKAO_REST_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,flyway
+  endpoint:
+    flyway:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
+

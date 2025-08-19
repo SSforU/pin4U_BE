@@ -3,7 +3,7 @@ package io.github.ssforu.pin4u.features.requests.application;
 import io.github.ssforu.pin4u.common.util.SlugGenerator;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDtos;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
-import io.github.ssforu.pin4u.features.stations.infra.StationJpaRepository;
+import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepo;
-    private final StationJpaRepository stationRepo;
+    private final StationRepository stationRepo;
     private final SlugGenerator slugGenerator; // util
 
     @Override

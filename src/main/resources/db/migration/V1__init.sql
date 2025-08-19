@@ -1,4 +1,4 @@
--- 0) 유효 태그 검증 함수 (이미 제공한 내용과 동일)
+-- 0) 유효 태그 검증 함수
 CREATE OR REPLACE FUNCTION is_valid_note_tags(p_tags jsonb)
 RETURNS boolean
 LANGUAGE sql
@@ -20,14 +20,13 @@ $$;
 
 -- 1) stations
 CREATE TABLE IF NOT EXISTS stations (
-    code        VARCHAR(20) PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    line        VARCHAR(30)  NOT NULL,
-    lat         NUMERIC(10,7),
-    lng         NUMERIC(10,7)
+    code varchar(16) PRIMARY KEY,
+    name varchar(100) NOT NULL,
+    line varchar(50) NOT NULL,
+    lat numeric(11,7) NOT NULL,
+    lng numeric(11,7) NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_stations_name ON stations(name);
-CREATE INDEX IF NOT EXISTS idx_stations_line ON stations(line);
+CREATE INDEX IF NOT EXISTS idx_stations_name ON stations (name);
 
 -- 2) users
 CREATE TABLE IF NOT EXISTS users (
@@ -39,10 +38,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);
 
--- 3) places (카카오 파리티)
+-- 3) places  (카카오 파리티: 문자열 유지)
 CREATE TABLE IF NOT EXISTS places (
-    external_id         VARCHAR(100) PRIMARY KEY,
-    id                  VARCHAR(50)  NOT NULL,
+    external_id         VARCHAR(100) PRIMARY KEY,      -- "kakao:{id}" | "mock:{key}"
+    id                  VARCHAR(50)  NOT NULL,         -- kakao 원본 id(문자열)
     place_name          VARCHAR(200) NOT NULL,
     category_group_code VARCHAR(10),
     category_group_name VARCHAR(50),
@@ -50,27 +49,27 @@ CREATE TABLE IF NOT EXISTS places (
     phone               VARCHAR(50),
     address_name        VARCHAR(300),
     road_address_name   VARCHAR(300),
-    x                   VARCHAR(50)  NOT NULL,
-    y                   VARCHAR(50)  NOT NULL,
+    x                   VARCHAR(50)  NOT NULL,         -- 문자열로 보관
+    y                   VARCHAR(50)  NOT NULL,         -- 문자열로 보관
     place_url           VARCHAR(500),
     created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_places_kakao_id ON places(id);
 
--- 4) place_mock
-CREATE TABLE place_mock (
-  place_id VARCHAR(64) PRIMARY KEY
-    REFERENCES places(id) ON DELETE CASCADE,
+-- 4) place_mock : places.external_id 기준 1:1
+CREATE TABLE IF NOT EXISTS place_mock (
+  external_id VARCHAR(100) PRIMARY KEY
+    REFERENCES places(external_id) ON DELETE CASCADE,
   rating NUMERIC(2,1),
   rating_count INT,
   review_snippets JSONB,
   image_urls JSONB,
-  opening_hours VARCHAR(300),
+  opening_hours JSONB,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 5) place_summaries
+-- 5) place_summaries : places.external_id 기준 1:1
 CREATE TABLE IF NOT EXISTS place_summaries (
     external_id       VARCHAR(100) PRIMARY KEY REFERENCES places(external_id) ON DELETE CASCADE,
     summary_text      TEXT,
@@ -109,29 +108,23 @@ CREATE INDEX IF NOT EXISTS idx_rpa_external ON request_place_aggregates(external
 
 -- 8) recommendation_notes
 CREATE TABLE IF NOT EXISTS recommendation_notes (
-    id          BIGSERIAL PRIMARY KEY,
-    rpa_id      BIGINT NOT NULL REFERENCES request_place_aggregates(id) ON DELETE CASCADE,
-    nickname    VARCHAR(50),
-    memo        VARCHAR(300),
-    image_url   VARCHAR(300),
-    tags        JSONB,
-    guest_id    UUID    NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-    -- 🔁 생성열 대신 일반 컬럼으로 두고 트리거로 유지
-    created_at_minute TIMESTAMPTZ,
-
+    id                   BIGSERIAL PRIMARY KEY,
+    rpa_id               BIGINT NOT NULL REFERENCES request_place_aggregates(id) ON DELETE CASCADE,
+    nickname             VARCHAR(50),
+    recommend_message    VARCHAR(300),
+    image_url            VARCHAR(300),
+    tags                 JSONB,
+    guest_id             UUID    NOT NULL,
+    created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at_minute    TIMESTAMPTZ,
     CONSTRAINT chk_notes_tags_valid CHECK (is_valid_note_tags(tags))
 );
-
 CREATE INDEX IF NOT EXISTS idx_notes_rpa ON recommendation_notes(rpa_id);
 CREATE INDEX IF NOT EXISTS idx_notes_guest_id_created_at ON recommendation_notes(guest_id, created_at);
-
--- ✅ 함수 없는 유니크 인덱스(중복 제출 방지: 같은 rpa, 같은 guest, 같은 분)
 CREATE UNIQUE INDEX IF NOT EXISTS uq_notes_agg_guest_minute
 ON recommendation_notes (rpa_id, guest_id, created_at_minute);
 
--- 🔧 created_at_minute 유지 트리거
+-- created_at_minute 유지 트리거
 CREATE OR REPLACE FUNCTION recommendation_notes_set_minute()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -143,7 +136,6 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_recommendation_notes_set_minute ON recommendation_notes;
-
 CREATE TRIGGER trg_recommendation_notes_set_minute
 BEFORE INSERT OR UPDATE OF created_at ON recommendation_notes
 FOR EACH ROW
