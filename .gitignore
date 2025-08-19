@@ -13,3 +13,12 @@ out/
 # OS
 .DS_Store
 
+
+!src/
+!src/**
+!*.java
+!*.kt
+!src/
+!src/**
+!*.java
+!*.kt
