@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: pin4U
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pin4u}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate   # 스키마는 Flyway가 관리
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.format_sql: true
+    flyway:
+      enabled: true
+      locations: classpath:db/migration
+      baseline-on-migrate: true
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    enabled: true
+
+cors:
+  allowed-origins: "http://localhost:3000"
+
+app:
+  kakao:    # 6단계에서만 키기
+    enabled: false
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+  seed:
+    enabled: false          # 기본은 OFF (로컬에서만 켬)
+  og:
+    image-enabled: false    # 현재 전략: OG 이미지 사용 안 함
+
+  summary:
+    ttl-days: 7
+
+resilience4j:
+  retry:
+    instances:
+      kakaoSearch:
+        max-attempts: 3
+        wait-duration: 300ms
+  timelimiter:
+    instances:
+      kakaoSearch:
+        timeout-duration: 2s
+  circuitbreaker:
+    instances:
+      kakaoSearch:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+  ratelimiter:
+    instances:
+      kakaoSearch:
+        limit-for-period: 10
+        limit-refresh-period: 1s

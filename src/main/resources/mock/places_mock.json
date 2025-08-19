@@ -1,0 +1,16 @@
+[
+  {
+    "external_id": "kakao:1234567890",
+    "rating": 4.6,
+    "rating_count": 128,
+    "review_snippets": ["조용하고 분위기 좋아요", "역에서 도보 10분"],
+    "image_urls": ["https://img.example.com/p1.jpg", "https://img.example.com/p2.jpg"]
+  },
+  {
+    "external_id": "mock:coffee_hidden_001",
+    "rating": 4.2,
+    "rating_count": 57,
+    "review_snippets": ["수플레 팬케이크 맛집", "평일 오전 한산"],
+    "image_urls": ["https://img.example.com/c1.jpg"]
+  }
+]

@@ -1,0 +1,53 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pin4u_be
+    username: ${DB_USER:pin4u} # pin4u_be에서 작업
+    password: ${DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none    # 엔티티 변경 자동 반영(편하게 개발)
+    show-sql: true
+    properties:
+      hibernate.hbm2ddl.auto: none
+    jackson:
+          property-naming-strategy: SNAKE_CASE
+
+    hibernate.format_sql: none
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    repair-on-migrate: true   # (옵션) 체크섬 꼬였을 때 자동 repair
+    baseline-on-migrate: true
+
+app:
+  seed:
+    enabled: true       # 로컬에서만 시드 실행
+  kakao:
+    enabled: false      # 6단계에서 ON
+  og:
+    image-enabled: false
+  ratelimit:
+    enabled: false
+
+kakao:
+  api:
+    base-url: https://dapi.kakao.com
+    key: ${KAKAO_REST_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,flyway
+  endpoint:
+    flyway:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: DEBUG
+
