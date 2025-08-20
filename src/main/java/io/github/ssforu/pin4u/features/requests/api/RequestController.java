@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/requests/api/RequestController.java
 package io.github.ssforu.pin4u.features.requests.api;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
@@ -25,15 +24,17 @@ public class RequestController {
         var created = requestService.create(req.ownerNickname(), req.stationCode(), req.requestMessage());
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("request", created);
+        body.put("request", created); // CreatedRequestDTO는 snake_case로 직렬화됨
 
         return ResponseEntity.created(URI.create("/r/" + created.slug()))
                 .body(ApiResponse.success(body));
     }
 
     @GetMapping
-    public ApiResponse<RequestDtos.ListResponse> list() {
+    public ApiResponse<Map<String, Object>> list() {
         List<RequestDtos.ListItem> items = requestService.list();
-        return ApiResponse.success(new RequestDtos.ListResponse(items, items.size()));
+        // 스펙: result + data.items 만
+        Map<String, Object> data = Map.of("items", items);
+        return ApiResponse.success(data);
     }
 }
