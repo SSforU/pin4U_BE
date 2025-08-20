@@ -1,8 +1,39 @@
+// src/main/java/io/github/ssforu/pin4u/features/requests/dto/RequestDtos.java
 package io.github.ssforu.pin4u.features.requests.dto;
-// 임시로 채워놓음
-public class RequestDtos {
-    public static class CreateReq { }     // @Valid 바디용 스텁
-    public static class CreateResp { }    // 생성 응답 스텁
-    public static class ListResp { }      // 리스트 응답 스텁
-    public static class DetailResp { }    // 상세 응답 스텁
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.OffsetDateTime;
+import java.util.List;
+
+public final class RequestDtos {
+    private RequestDtos() {}
+
+    // 요청 바디
+    public record CreateRequest(
+            @JsonProperty("owner_nickname") String ownerNickname,
+            @JsonProperty("station_code") String stationCode,
+            @JsonProperty("request_message") String requestMessage
+    ) {}
+
+    // 생성 결과
+    public record CreatedRequestDTO(
+            String slug,
+            String ownerNickname,
+            String stationCode,
+            String requestMessage,
+            OffsetDateTime createdAt
+    ) {}
+
+    // 리스트 아이템
+    public record ListItem(
+            String slug,
+            String ownerNickname,
+            String stationCode,
+            String requestMessage,
+            int recommendCount,
+            OffsetDateTime createdAt
+    ) {}
+
+    // 컨트롤러 응답 포맷
+    public record ListResponse(List<ListItem> items, int count) {}
 }

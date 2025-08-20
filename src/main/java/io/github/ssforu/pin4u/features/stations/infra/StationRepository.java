@@ -6,13 +6,13 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
-public interface StationRepository extends JpaRepository<Station, String> {
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
 
-    // 단어 포함 검색 (공백 포함 입력 대비): name ILIKE %q%
-    @Query("""
-        select s from Station s
-        where lower(s.name) like lower(concat('%', :q, '%'))
-        order by s.name asc
-    """)
-    Page<Station> searchByNameContains(@Param("q") String q, Pageable pageable);
+public interface StationRepository extends JpaRepository<Station, String> {
+    Optional<Station> findByCode(String code);
+    List<Station> findAllByCodeIn(Collection<String> codes);
+    Page<Station> searchByNameContains(String q, Pageable pageable);
 }
+

@@ -1,35 +1,63 @@
+// src/main/java/io/github/ssforu/pin4u/features/requests/application/RequestServiceImpl.java
 package io.github.ssforu.pin4u.features.requests.application;
 
-import io.github.ssforu.pin4u.common.util.SlugGenerator;
+import io.github.ssforu.pin4u.features.requests.domain.Request;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDtos;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
+import io.github.ssforu.pin4u.features.requests.infra.SlugGenerator;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+import java.util.List;
+
 @Service
-@Transactional
-@RequiredArgsConstructor
 public class RequestServiceImpl implements RequestService {
-    private final RequestRepository requestRepo;
-    private final StationRepository stationRepo;
-    private final SlugGenerator slugGenerator; // util
+
+    private final RequestRepository requestRepository;
+    private final StationRepository stationRepository;
+    private final SlugGenerator slugGenerator;
+
+    public RequestServiceImpl(RequestRepository requestRepository,
+                              StationRepository stationRepository,
+                              SlugGenerator slugGenerator) {
+        this.requestRepository = requestRepository;
+        this.stationRepository = stationRepository;
+        this.slugGenerator = slugGenerator;
+    }
 
     @Override
-    public RequestDtos.CreateResp create(RequestDtos.CreateReq req) {
-        // station_code 검증 → slug 생성(Base62) → 저장 → DTO 변환
-        throw new UnsupportedOperationException("임시 TODO: implement create(req)");
+    @Transactional
+    public RequestDtos.CreatedRequestDTO create(String ownerNickname, String stationCode, String requestMessage) {
+        // (옵션) 역 코드 검증을 하려면 주석 해제
+        // stationRepository.findByCode(stationCode)
+        //      .orElseThrow(() -> new IllegalArgumentException("unknown station: " + stationCode));
+
+        String slug = slugGenerator.generate(stationCode);
+        Request saved = requestRepository.save(new Request(slug, ownerNickname, stationCode, requestMessage));
+
+        return new RequestDtos.CreatedRequestDTO(
+                saved.getSlug(),
+                saved.getOwnerNickname(),
+                saved.getStationCode(),
+                saved.getRequestMessage(),
+                saved.getCreatedAt()
+        );
     }
 
-    @Override @Transactional(readOnly = true)
-    public RequestDtos.ListResp list() {
-        throw new UnsupportedOperationException("임시 TODO: implement list()");
-    }
-
-    @Override @Transactional(readOnly = true)
-    public RequestDtos.DetailResp detail(String slug) {
-        // 핀+카드 데이터 조합
-        throw new UnsupportedOperationException("임시 TODO: implement detail(slug)");
+    @Override
+    @Transactional(readOnly = true)
+    public List<RequestDtos.ListItem> list() {
+        return requestRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(r -> new RequestDtos.ListItem(
+                        r.getSlug(),
+                        r.getOwnerNickname(),
+                        r.getStationCode(),
+                        r.getRequestMessage(),
+                        r.getRecommendCount(),
+                        r.getCreatedAt()
+                ))
+                .toList();
     }
 }

@@ -1,4 +1,11 @@
 package io.github.ssforu.pin4u.features.requests.infra;
 
-public class RequestRepository {
+import io.github.ssforu.pin4u.features.requests.domain.Request;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface RequestRepository extends JpaRepository<Request, Long> {
+
+    List<Request> findAllByOrderByCreatedAtDesc();
 }
