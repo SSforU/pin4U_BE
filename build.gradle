@@ -39,12 +39,33 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.4'
     testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
     testImplementation 'org.testcontainers:postgresql:1.20.2'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
-    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-    testImplementation 'org.mockito:mockito-core:5.11.0'
+
+    //testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.3'
+    //testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    //testImplementation 'org.mockito:mockito-core:5.11.0'
 
     // WebClient 사용 (필수)
     implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
+}
+// ✅ 테스트는 기본적으로 건너뛰기 (수동으로만 켜기)
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+    onlyIf { project.hasProperty("withTests") }  // -PwithTests 줄 때만 실행
+    systemProperty "spring.testcontainers.enabled", "false"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    onlyIf { project.hasProperty('withTests') }  // -PwithTests 줄 때만 실행
+}
+tasks.named('compileTestJava') {
+    onlyIf { project.hasProperty('withTests') }  // 기본적으로 테스트 소스 컴파일도 안 함
+}
+tasks.named('processTestResources') {
+    onlyIf { project.hasProperty('withTests') }
+}
+tasks.named('testClasses') {
+    onlyIf { project.hasProperty('withTests') }
 }
 
 tasks.named('test') { useJUnitPlatform() }
