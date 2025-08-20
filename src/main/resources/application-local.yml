@@ -1,0 +1,44 @@
+
+
+# 로컬 전용(여기에만 DB/포트/JPA/Flyway) !!!!!!!!!!!!
+
+server:
+  port: 8081
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/pin4u_be
+    username: pin4u
+    password: ""                 # 로컬 비번이 있으면 넣기
+    driver-class-name: org.postgresql.Driver
+
+kakao:
+  api:
+    base-url: https://dapi.kakao.com
+    key: ${KAKAO_REST_API_KEY:dummy}
+app:
+  kakao:
+    enabled: false
+
+  jpa:
+    open-in-view: false
+    show-sql: true
+    hibernate:
+      ddl-auto: none       # 스키마 변경은 Flyway가 관리
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true    # 빈/기존 스키마 모두 안전하게
+
+logging:
+  level:
+    io.github.ssforu.pin4u: DEBUG
+    org.springframework.web: INFO
