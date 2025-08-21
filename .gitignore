@@ -22,3 +22,6 @@ out/
 !src/**
 !*.java
 !*.kt
+/.idea/
+/build/
+/out/
