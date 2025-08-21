@@ -1,8 +1,11 @@
 package io.github.ssforu.pin4u.features.places.domain;
 
-import org.springframework.lang.Nullable;
+import java.math.BigDecimal;
+import java.util.List;
 
-// 외부 포트 인터페이스
 public interface KakaoSearchPort {
-    KakaoPayload searchKeyword(String query, @Nullable String stationCode, int limit);
+    /** 키워드 + 반경 검색 (lat=y, lng=x, 카카오 스펙) */
+    List<KakaoPayload.Document> keywordSearch(
+            BigDecimal lat, BigDecimal lng, String query, int radiusM, int size
+    );
 }

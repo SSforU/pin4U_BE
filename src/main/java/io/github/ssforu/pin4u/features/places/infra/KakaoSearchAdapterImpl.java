@@ -1,26 +1,52 @@
 package io.github.ssforu.pin4u.features.places.infra;
 
-import io.github.ssforu.pin4u.common.config.AppProperties;
+import io.github.ssforu.pin4u.common.exception.ApiErrorCode;
+import io.github.ssforu.pin4u.common.exception.ApiException;
 import io.github.ssforu.pin4u.features.places.domain.KakaoPayload;
 import io.github.ssforu.pin4u.features.places.domain.KakaoSearchPort;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
-//WebClient로 카카오 호출(Resilience4j는 여기서)
+import java.math.BigDecimal;
+import java.util.List;
+
 @Component
-@RequiredArgsConstructor
 public class KakaoSearchAdapterImpl implements KakaoSearchPort {
-    private final WebClient kakaoWebClient; // common.config.WebClientConfig
-    private final AppProperties props;
+
+    private final WebClient kakao;
+    private final boolean enabled;
+
+    public KakaoSearchAdapterImpl(
+            WebClient kakaoWebClient,
+            @Value("${app.kakao.enabled:true}") boolean enabled // ★ 변경
+    ) {
+        this.kakao = kakaoWebClient;
+        this.enabled = enabled;
+    }
 
     @Override
-    public KakaoPayload searchKeyword(String query, String stationCode, int limit) {
-        if (!props.kakao().enabled()) {
-            return KakaoPayload.empty(); // MOCK 경로
+    public List<KakaoPayload.Document> keywordSearch(
+            BigDecimal lat, BigDecimal lng, String query, int radiusM, int size
+    ) {
+        if (!enabled) {
+            throw new ApiException(ApiErrorCode.UPSTREAM_ERROR, "kakao disabled", null);
         }
-        // WebClient 호출 + Resilience4j 어노테이션은 여기서(필요 시)
-        //...
-        return KakaoPayload.empty();
+        var resp = kakao.get()
+                .uri(u -> u.path("/v2/local/search/keyword.json")
+                        .queryParam("query", query)
+                        .queryParam("y", lat)   // 위도
+                        .queryParam("x", lng)   // 경도
+                        .queryParam("radius", radiusM)
+                        .queryParam("size", size)
+                        .build())
+                .retrieve()
+                .toEntity(KakaoPayload.SearchResponse.class)
+                .block();
+
+        if (resp == null || resp.getBody() == null) {
+            throw new ApiException(ApiErrorCode.UPSTREAM_ERROR, "kakao search failed", null);
+        }
+        return resp.getBody().documents();
     }
 }

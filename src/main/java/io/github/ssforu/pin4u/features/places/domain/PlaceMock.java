@@ -1,43 +1,38 @@
 package io.github.ssforu.pin4u.features.places.domain;
 
 import jakarta.persistence.*;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.List;
-import lombok.*;
 
 @Entity
 @Table(name = "place_mock")
 @Getter @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class PlaceMock {
-    @Id
-    @Column(name = "place_id")
-    private Long id; // places.id와 동일 키
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "place_id")
-    private Place place;
+    @Id
+    @Column(name = "external_id", nullable = false, length = 80)
+    private String externalId;
 
     @Column(name = "rating", precision = 2, scale = 1)
-    private BigDecimal rating; // 4.6 등
+    private BigDecimal rating;
 
     @Column(name = "rating_count")
     private Integer ratingCount;
 
-    // JSONB 매핑은 문자열로 두고 서비스/리포지토리에서 파싱
+    // DB jsonb를 문자열로 보관 (서비스에서 JSON 파싱)
     @Column(name = "review_snippets", columnDefinition = "jsonb")
-    private String reviewSnippets; // '["핸드드립 좋음", ...]'
+    private String reviewSnippetsJson;
 
     @Column(name = "image_urls", columnDefinition = "jsonb")
-    private String imageUrls;
+    private String imageUrlsJson;
 
-    // 영업시간(요청 사항)
-    @Column(name = "opening_hours", length = 300)
-    private String openingHours;
+    @Column(name = "opening_hours", columnDefinition = "jsonb")
+    private String openingHoursJson;
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
