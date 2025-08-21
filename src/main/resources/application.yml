@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: pin4U
+  profiles:
+    default: local  # 명시하지 않으면 항상 local로 동작
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    enabled: true
+
+# (프로젝트에서 읽어쓰는 커스텀 값이면 유지)
+cors:
+  allowed-origins: "http://localhost:3000"
+
+app:
+  kakao:
+    enabled: false      # 6단계에서만 ON
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+  seed:
+    enabled: false
+  og:
+    image-enabled: false
+  summary:
+    ttl-days: 7
+
+resilience4j:
+  retry:
+    instances:
+      kakaoSearch:
+        max-attempts: 3
+        wait-duration: 300ms
+  timelimiter:
+    instances:
+      kakaoSearch:
+        timeout-duration: 2s
+  circuitbreaker:
+    instances:
+      kakaoSearch:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+  ratelimiter:
+    instances:
+      kakaoSearch:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,mappings
+  endpoint:
+    flyway:
+      enabled: true
