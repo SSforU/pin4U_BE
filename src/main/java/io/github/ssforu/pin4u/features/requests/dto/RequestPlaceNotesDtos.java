@@ -1,18 +1,18 @@
 package io.github.ssforu.pin4u.features.requests.dto;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.List;
 
 public final class RequestPlaceNotesDtos {
+
     private RequestPlaceNotesDtos() {}
 
     public record Note(
             String nickname,
             String recommendMessage,
-            @JsonInclude(JsonInclude.Include.NON_NULL) String imageUrl,
+            String imageUrl,
             List<String> tags,
-            OffsetDateTime createdAt
+            Instant createdAt   // ★ Instant -> JSON "…Z"
     ) {}
 
     public record Response(

@@ -5,52 +5,61 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.ssforu.pin4u.features.requests.dto.RequestPlaceNotesDtos;
 import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceNotesQueryRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collections;
 import java.util.List;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+@Slf4j
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class RequestPlaceNotesServiceImpl implements RequestPlaceNotesService {
 
     private final RequestPlaceNotesQueryRepository repo;
-    private final ObjectMapper om;
+    private final ObjectMapper objectMapper;
 
     @Override
     public RequestPlaceNotesDtos.Response getNotes(String slug, String externalId, Integer limit) {
-        int lim = (limit == null || limit <= 0) ? 50 : Math.min(limit, 200);
+        int lim = (limit == null || limit <= 0 || limit > 100) ? 50 : limit;
 
-        var placeMeta = repo.findPlaceMeta(slug, externalId)
+        var meta = repo.findPlaceMeta(slug, externalId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "place not found for request"));
+                        NOT_FOUND, "place not found for request"));
 
         var rows = repo.findNotes(slug, externalId, lim);
 
-        var notes = rows.stream().map(r -> new RequestPlaceNotesDtos.Note(
-                r.getNickname(),
-                r.getRecommend_message(),
-                r.getImage_url(),
-                parseList(r.getTags_json()),
-                r.getCreated_at()
-        )).toList();
+        List<RequestPlaceNotesDtos.Note> notes = rows.stream().map(r -> {
+            List<String> tags = parseTagsSafe(r.getTags_json());
+            return new RequestPlaceNotesDtos.Note(
+                    r.getNickname(),
+                    r.getRecommend_message(),
+                    r.getImage_url(),
+                    tags,
+                    r.getCreated_at()    // Instant 그대로
+            );
+        }).toList();
 
         return new RequestPlaceNotesDtos.Response(
-                placeMeta.getExternal_id(),
-                placeMeta.getPlace_name(),
-                placeMeta.getPlace_url(),
+                meta.getExternal_id(),
+                meta.getPlace_name(),
+                meta.getPlace_url(),
                 notes
         );
     }
 
-    private List<String> parseList(String json) {
+    private List<String> parseTagsSafe(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyList();
         try {
-            if (json == null) return null;
-            return om.readValue(json, new TypeReference<List<String>>() {});
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception e) {
-            // JSON이 손상된 경우에도 API는 깨지지 않게 빈 배열로 처리
-            return List.of();
+            log.warn("[notes] tags JSON parse failed: {}", e.getMessage());
+            return Collections.emptyList();
         }
     }
 }
