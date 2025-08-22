@@ -3,7 +3,8 @@ package io.github.ssforu.pin4u.common.exception;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j; // ✅ Lombok 로거
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory; // ✅ Lombok 미의존: 직접 로거 선언
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,9 +12,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException ex) {
@@ -22,7 +24,7 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .orElse("validation error");
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error("BAD_REQUEST", msg, null)); // ✅ (code, message, details)
+                .body(ApiResponse.error("BAD_REQUEST", msg, null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -51,8 +53,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception ex) {
-        log.error("[UNEXPECTED] {}", ex.getMessage(), ex); // ✅ 이제 log 인식됩니다.
+        log.error("[UNEXPECTED] {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("INTERNAL_ERROR", "unexpected server error", null)); // ✅ 시그니처 일치
+                .body(ApiResponse.error("INTERNAL_ERROR", "unexpected server error", null));
     }
 }
