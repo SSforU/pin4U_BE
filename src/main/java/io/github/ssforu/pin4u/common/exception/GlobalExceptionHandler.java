@@ -45,6 +45,7 @@ public class GlobalExceptionHandler {
             case NOT_FOUND -> "NOT_FOUND";
             case UNAUTHORIZED -> "UNAUTHORIZED";
             case FORBIDDEN -> "FORBIDDEN";
+            case TOO_MANY_REQUESTS -> "RATE_LIMITED";
             default -> "ERROR";
         };
         return ResponseEntity.status(status)
