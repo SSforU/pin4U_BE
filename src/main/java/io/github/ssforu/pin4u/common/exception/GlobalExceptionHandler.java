@@ -10,10 +10,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -78,6 +82,21 @@ public class GlobalExceptionHandler {
         };
         return ResponseEntity.status(status)
                 .body(ApiResponse.error(code, ex.getReason() != null ? ex.getReason() : "error", null));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException e) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("result", "error");
+        body.put("data", null);
+        Map<String, Object> err = new LinkedHashMap<>();
+        err.put("code", "BAD_REQUEST");
+        err.put("message", e.getMessage());
+        err.put("details", null);
+        body.put("error", err);
+        body.put("timestamp", java.time.OffsetDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     // 그 외 예기치 못한 예외만 500
