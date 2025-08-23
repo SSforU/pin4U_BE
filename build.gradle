@@ -17,11 +17,6 @@ group = 'io.github.ssforu'
 version = '0.0.1-SNAPSHOT'
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
-/**
- * 💡 Lombok annotation processing이 항상 동작하도록 안전장치.
- *  - 일부 환경에서 annotationProcessor classpath가 분리되면 Getter/Builder 등이 생성 안되어
- *    컴파일 에러(Place::getExternalId, Station#getLat 등)가 발생할 수 있음.
- */
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -35,19 +30,20 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.5.4'
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
 
-    // Flyway (PG 17.5)
-    implementation 'org.flywaydb:flyway-core:11.7.2'
+
+            // Flyway (PG 17.5)
+            implementation 'org.flywaydb:flyway-core:11.7.2'
     implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
 
     runtimeOnly 'org.postgresql:postgresql:42.7.7'
 
-    // ✅ Lombok - 메인/테스트 모두 annotation processing 보장
+    // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
 
-    // Spring @ConfigurationProperties metadata 생성 (선택이지만 있으면 편함)
+    // @ConfigurationProperties metadata
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.5.4'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools:3.5.4'
@@ -57,18 +53,16 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
     testImplementation 'org.testcontainers:postgresql:1.20.2'
 
-    // WebClient
+    // WebClient (Reactive server 미구동, WebClient만 사용)
     implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
 }
 
-// ✅ 테스트는 기본적으로 건너뛰기 (-PwithTests 줄 때만 실행)
 tasks.withType(Test).configureEach {
     useJUnitPlatform()
     onlyIf { project.hasProperty("withTests") }
     systemProperty "spring.testcontainers.enabled", "false"
 }
 
-// (중복 옵션이 있어도 무해하지만, 가독성 위해 최소화)
 tasks.named('compileTestJava') { onlyIf { project.hasProperty('withTests') } }
 tasks.named('processTestResources') { onlyIf { project.hasProperty('withTests') } }
 tasks.named('testClasses') { onlyIf { project.hasProperty('withTests') } }

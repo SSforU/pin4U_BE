@@ -6,6 +6,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 // ⚠️ GidCookieFilter 가 @Component 또는 @Bean 으로 등록되어 있어야 합니다.
 // 만약 @Component 가 아니라면 아래에 @Bean 으로 직접 등록하세요.
@@ -13,7 +15,16 @@ import org.springframework.context.annotation.Configuration;
 // public GidCookieFilter gidCookieFilter() { return new GidCookieFilter(); }
 
 @Configuration
-public class WebConfig {
+public class WebConfig implements WebMvcConfigurer {
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        registry.addMapping("/**") // 모든 API 경로
+                .allowedOrigins("http://localhost:5173") // 허용할 Origin
+                .allowedMethods("*") // GET, POST, PUT, DELETE, OPTIONS 등 모두
+                .allowedHeaders("*") // 모든 헤더 허용
+                .allowCredentials(false);
+    }
+
 
     @Bean
     FilterRegistrationBean<GidCookieFilter> gidFilter(GidCookieFilter f){
