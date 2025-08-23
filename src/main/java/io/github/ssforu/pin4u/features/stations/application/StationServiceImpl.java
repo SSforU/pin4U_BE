@@ -1,3 +1,4 @@
+// src/main/java/io/github/ssforu/pin4u/features/stations/application/StationServiceImpl.java
 package io.github.ssforu.pin4u.features.stations.application;
 
 import io.github.ssforu.pin4u.features.stations.dto.StationDtos;
@@ -24,12 +25,13 @@ public class StationServiceImpl implements StationService {
         if (q == null || q.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
         if (limit < 1 || limit > 50) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be between 1 and 50");
 
-        var page = stationRepository.searchByNameContains(q.trim(), PageRequest.of(0, limit));
+        // ✅ 메서드명만 교체 (기능/논리 불변)
+        var page = stationRepository.findByNameContainingIgnoreCase(q.trim(), PageRequest.of(0, limit));
 
         List<StationDtos.StationItem> items = page.getContent().stream().map(s ->
                 new StationDtos.StationItem(
                         s.getCode(), s.getName(), s.getLine(),
-                        s.getLat(), s.getLng() // BigDecimal 그대로
+                        s.getLat(), s.getLng()
                 )
         ).toList();
 
