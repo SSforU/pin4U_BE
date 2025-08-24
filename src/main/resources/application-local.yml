@@ -7,7 +7,6 @@ spring:
     username: pin4u
     password: "lsy12052781!"
     driver-class-name: org.postgresql.Driver
-
   jpa:
     open-in-view: false
     show-sql: true
@@ -18,12 +17,10 @@ spring:
         format_sql: true
         jdbc:
           time_zone: UTC
-
   flyway:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: true
-
   jackson:
     property-naming-strategy: SNAKE_CASE
 
@@ -32,14 +29,15 @@ app:
     stationRadiusM: 800
     topN: 10
   kakao:
-    enabled: true
+    enabled: ${APP_KAKAO_ENABLED:true}      # ← 통일
     api:
       base-url: https://dapi.kakao.com
-      # 환경변수 없을 때 바로 죽게 하려면 콜론 기본값 제거:
-      key: ${KAKAO_REST_API_KEY}  # ← 환경변수만 허용(기본값 없음)
+      key: ${KAKAO_REST_API_KEY}            # ← 키는 env로만
   stations:
     seed:
       csv-path: file:/절대/경로/서울교통공사_노선별 지하철역 정보.csv
+  ai:
+    enabled: ${APP_AI_ENABLED:true}         # ← 통일
 
 logging:
   level:
