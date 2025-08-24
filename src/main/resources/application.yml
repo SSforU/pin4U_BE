@@ -10,20 +10,25 @@ springdoc:
   api-docs:
     enabled: true
 
-# (프로젝트에서 읽어쓰는 커스텀 값이면 유지)
 cors:
   allowed-origins: "http://localhost:3000"
 
 app:
   kakao:
-    enabled: false      # 6단계에서만 ON
-    rest-api-key: ${KAKAO_REST_API_KEY:}
+    enabled: ${APP_KAKAO_ENABLED:true}     # ← 기본 ON, 필요하면 env로 false
+    rest-api-key: ${KAKAO_REST_API_KEY:}   # ← 키는 반드시 env로
   seed:
     enabled: false
   og:
     image-enabled: false
   summary:
     ttl-days: 7
+  ai:
+    enabled: ${APP_AI_ENABLED:true}        # ← 기본 ON, 필요하면 env로 false
+    openai:
+      base_url: https://api.openai.com/v1
+      model: ${OPENAI_MODEL:gpt-4o-mini}
+      timeout_ms: 8000
 
 resilience4j:
   retry:

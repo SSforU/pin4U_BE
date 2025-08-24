@@ -75,4 +75,34 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
             @Param("externalId") String externalId,
             @Param("limit") int limit
     );
+
+    /** 요청 slug + external_ids 집합에 대한 태그 집계 결과 (중복 제거, 정렬은 DB 기본) */
+    interface TagAgg {
+        String getExternal_id();
+        String getTags_json(); // TEXT → 서비스에서 List<String>으로 파싱
+    }
+
+    @Query(value = """
+        SELECT
+            p.external_id AS external_id,
+            CAST(
+                COALESCE(jsonb_agg(DISTINCT t.tag), '[]'::jsonb)
+                AS TEXT
+            ) AS tags_json
+        FROM requests r
+        JOIN request_place_aggregates rpa
+          ON rpa.request_id = r.slug
+        JOIN places p
+          ON p.external_id = rpa.place_external_id
+        JOIN recommendation_notes rn
+          ON rn.rpa_id = rpa.id
+        LEFT JOIN LATERAL jsonb_array_elements_text(rn.tags) AS t(tag) ON TRUE
+        WHERE r.slug = :slug
+          AND p.external_id = ANY (:externalIds)
+        GROUP BY p.external_id
+        """, nativeQuery = true)
+    List<TagAgg> findTagsAggByExternalIds(
+            @Param("slug") String slug,
+            @Param("externalIds") String[] externalIds
+    );
 }

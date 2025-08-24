@@ -6,6 +6,7 @@ import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.*;
 import io.github.ssforu.pin4u.features.requests.infra.RequestDetailQueryRepository;
 import io.github.ssforu.pin4u.features.requests.infra.RequestDetailQueryRepository.Row;
+import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceNotesQueryRepository;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
 import io.github.ssforu.pin4u.features.requests.domain.Request;
@@ -17,9 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,22 +28,28 @@ public class RequestDetailServiceImpl implements RequestDetailService {
     private final RequestRepository requestRepository;
     private final StationRepository stationRepository;
     private final RequestDetailQueryRepository queryRepository;
+    private final RequestPlaceNotesQueryRepository notesQueryRepository;
+    private final AiSummaryService aiSummaryService;
     private final ObjectMapper objectMapper;
 
     public RequestDetailServiceImpl(
             RequestRepository requestRepository,
             StationRepository stationRepository,
             RequestDetailQueryRepository queryRepository,
+            RequestPlaceNotesQueryRepository notesQueryRepository,
+            AiSummaryService aiSummaryService,
             ObjectMapper objectMapper
     ) {
         this.requestRepository = requestRepository;
         this.stationRepository = stationRepository;
         this.queryRepository = queryRepository;
+        this.notesQueryRepository = notesQueryRepository;
+        this.aiSummaryService = aiSummaryService;
         this.objectMapper = objectMapper;
     }
 
     @Override
-    public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi) {
+    public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi /* 무시: 항상 시도 */) {
         // 1) 요청/역 조회
         Request req = requestRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "request not found"));
@@ -56,7 +62,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
         // 3) 목록 조회
         List<Row> rows = queryRepository.findItemsBySlug(slug, lim);
 
-        // 4) 매핑
+        // 4) Row -> Item 1차 매핑 (mock 우선)
         List<Item> items = new ArrayList<>(rows.size());
         for (Row r : rows) {
             Mock mock = null;
@@ -64,14 +70,12 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                     || r.getMock_image_urls_json() != null || r.getMock_opening_hours_json() != null) {
                 List<String> imageUrls = parseJsonArrayOfString(r.getMock_image_urls_json());
                 List<String> openingHours = parseJsonArrayOfString(r.getMock_opening_hours_json());
-                mock = new Mock(r.getMock_rating(), r.getMock_rating_count(), imageUrls, openingHours);
-            }
-
-            Ai ai = null;
-            if (includeAi && (r.getAi_summary_text() != null || r.getAi_evidence_json() != null)) {
-                Object evidence = parseJsonGeneric(r.getAi_evidence_json());
-                OffsetDateTime updated = r.getAi_updated_at();
-                ai = new Ai(r.getAi_summary_text(), evidence, updated);
+                mock = new Mock(
+                        r.getMock_rating(),
+                        r.getMock_rating_count(),
+                        imageUrls,
+                        openingHours
+                );
             }
 
             Item item = new Item(
@@ -88,43 +92,85 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                     r.getDistance_m(),
                     r.getPlace_url(),
                     mock,
-                    ai,
+                    null, // ai는 아래에서 채움
                     r.getRecommended_count()
             );
             items.add(item);
         }
 
+        // 5) evidence 준비: review_snippets(from place_mock) + user_tags(추천노트 집계)
+        Map<String, List<String>> reviewSnippetsMap = new HashMap<>();
+        for (Row r : rows) {
+            List<String> rs = parseJsonArrayOfString(r.getMock_review_snippets_json());
+            if (rs != null && !rs.isEmpty()) {
+                reviewSnippetsMap.put(r.getExternal_id(), rs);
+            }
+        }
+
+        String[] externalIds = items.stream()
+                .map(Item::externalId)
+                .distinct()
+                .toArray(String[]::new);
+        Map<String, List<String>> userTagsMap = notesQueryTags(slug, externalIds);
+
+        // 6) AI 요약 항상 시도(실패/비활성 시 ai 생략)
+        ListIterator<Item> it = items.listIterator();
+        while (it.hasNext()) {
+            Item cur = it.next();
+
+            List<String> reviewSnippets = reviewSnippetsMap.get(cur.externalId());
+            List<String> userTags = userTagsMap.get(cur.externalId());
+
+            Double rating = (cur.mock() == null) ? null : cur.mock().rating();
+            Integer ratingCount = (cur.mock() == null) ? null : cur.mock().ratingCount();
+
+            Optional<String> summaryOpt = aiSummaryService.generateSummary(
+                    cur.placeName(), cur.categoryName(), rating, ratingCount, reviewSnippets, userTags
+            );
+
+            if (summaryOpt.isPresent()) {
+                Map<String, Object> ev = new LinkedHashMap<>();
+                ev.put("category_name", cur.categoryName());
+                ev.put("rating", rating);
+                ev.put("rating_count", ratingCount);
+                if (reviewSnippets != null && !reviewSnippets.isEmpty()) ev.put("review_snippets", reviewSnippets);
+                if (userTags != null && !userTags.isEmpty()) ev.put("user_tags", userTags);
+
+                Ai ai = new Ai(summaryOpt.get(), ev, OffsetDateTime.now());
+
+                it.set(new Item(
+                        cur.externalId(), cur.id(), cur.placeName(),
+                        cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
+                        cur.addressName(), cur.roadAddressName(),
+                        cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
+                        cur.mock(), ai, cur.recommendedCount()
+                ));
+            }
+        }
+
         RequestDetailDtos.Station dtoStation = new RequestDetailDtos.Station(
-                st.getCode(),
-                st.getName(),
-                st.getLine(),
-                toBigDecimal(st.getLat()),
-                toBigDecimal(st.getLng())
+                st.getCode(), st.getName(), st.getLine(), toBigDecimal(st.getLat()), toBigDecimal(st.getLng())
         );
 
-        return new RequestDetailResponse(
-                req.getSlug(),
-                dtoStation,
-                req.getRequestMessage(),
-                items
-        );
+        return new RequestDetailResponse(req.getSlug(), dtoStation, req.getRequestMessage(), items);
+    }
+
+    /** r.slug + places IN (...) 컨텍스트에서 추천노트 태그를 집계 */
+    private Map<String, List<String>> notesQueryTags(String slug, String[] externalIds) {
+        if (externalIds == null || externalIds.length == 0) return Map.of();
+        return notesQueryRepository.findTagsAggByExternalIds(slug, externalIds).stream()
+                .collect(Collectors.toMap(
+                        RequestPlaceNotesQueryRepository.TagAgg::getExternal_id,
+                        row -> parseJsonArrayOfString(row.getTags_json())
+                ));
     }
 
     private List<String> parseJsonArrayOfString(String json) {
-        if (json == null) return null;
+        if (json == null || json.isBlank()) return null;
         try {
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (Exception e) {
-            return null; // 파싱 실패 시 null 허용
-        }
-    }
-
-    private Object parseJsonGeneric(String json) {
-        if (json == null) return null;
-        try {
-            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
-            return null;
+            return null; // 파싱 실패 허용
         }
     }
 
