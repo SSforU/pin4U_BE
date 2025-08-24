@@ -3,11 +3,13 @@ package io.github.ssforu.pin4u.features.member.api;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.member.application.MemberService;
 import io.github.ssforu.pin4u.features.member.dto.MemberDtos;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+@CrossOrigin
 @RestController
 public class MemberController {
     private final MemberService service;

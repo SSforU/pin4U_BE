@@ -3,8 +3,10 @@ package io.github.ssforu.pin4u.features.requests.api;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.requests.application.RequestDetailService;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.RequestDetailResponse;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/requests")
 public class RequestDetailController {

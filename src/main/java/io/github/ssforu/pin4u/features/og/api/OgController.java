@@ -4,6 +4,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 // get r/slug
+@CrossOrigin
 @Controller
 public class OgController {
     @GetMapping("/r/{slug}")

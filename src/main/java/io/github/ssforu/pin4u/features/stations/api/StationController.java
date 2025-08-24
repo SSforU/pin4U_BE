@@ -5,6 +5,7 @@ import io.github.ssforu.pin4u.features.stations.application.StationService;
 import io.github.ssforu.pin4u.features.stations.dto.StationDtos.SearchResponse;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/stations")
 public class StationController {

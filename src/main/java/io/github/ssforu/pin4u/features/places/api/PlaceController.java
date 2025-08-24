@@ -6,6 +6,7 @@ import io.github.ssforu.pin4u.features.places.dto.PlaceDtos;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin
 @RestController
 @RequestMapping("/api/places")
 @RequiredArgsConstructor
