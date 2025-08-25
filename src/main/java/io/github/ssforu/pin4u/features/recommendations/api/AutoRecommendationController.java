@@ -6,7 +6,6 @@ import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.RequestDet
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin
 @RestController
 @RequestMapping("/api/recommendations")
 @RequiredArgsConstructor

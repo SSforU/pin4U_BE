@@ -10,13 +10,17 @@ springdoc:
   api-docs:
     enabled: true
 
-cors:
-  allowed-origins: "http://localhost:3000"
+# (참고) 아래 커스텀 'cors.allowed-origins' 같은 비표준 키는 사용하지 않습니다.
+#cors:
+#  allowed-origins: "http://localhost:3000"
 
 app:
+  cookies:
+    crossSite: true   # 운영: true (교차 출처 쿠키 → SameSite=None; Secure)
+    domain: ""        # Host-Only 권장. 공유 필요 시 ".ss4u-pin4u.store"
   kakao:
-    enabled: ${APP_KAKAO_ENABLED:true}     # ← 기본 ON, 필요하면 env로 false
-    rest-api-key: ${KAKAO_REST_API_KEY:}   # ← 키는 반드시 env로
+    enabled: ${APP_KAKAO_ENABLED:true}
+    rest-api-key: ${KAKAO_REST_API_KEY:}
     api:
       base-url: https://dapi.kakao.com
   seed:
@@ -26,11 +30,15 @@ app:
   summary:
     ttl-days: 7
   ai:
-    enabled: ${APP_AI_ENABLED:true}        # ← 기본 ON, 필요하면 env로 false
+    enabled: ${APP_AI_ENABLED:true}
     openai:
       base_url: https://api.openai.com/v1
       model: ${OPENAI_MODEL:gpt-4o-mini}
       timeout_ms: 8000
+
+# 프록시/ALB 뒤에서 X-Forwarded-* 헤더를 인지하여 HTTPS 판별 정확도 확보
+server:
+  forward-headers-strategy: framework
 
 resilience4j:
   retry:

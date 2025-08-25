@@ -3,7 +3,6 @@ package io.github.ssforu.pin4u.features.places.api;
 
 import org.springframework.web.bind.annotation.*;
 
-@CrossOrigin
 @RestController
 @RequestMapping("/api/places")
 public class PlaceSummaryController {

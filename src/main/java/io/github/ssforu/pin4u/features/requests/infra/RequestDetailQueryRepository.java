@@ -73,7 +73,7 @@ public interface RequestDetailQueryRepository extends Repository<Place, Long> {
         NULL::timestamptz                                       AS ai_updated_at
     FROM requests r
     JOIN stations s               ON s.code = r.station_code
-    JOIN request_place_aggregates rpa ON rpa.request_id::text = r.slug        
+    JOIN request_place_aggregates rpa ON rpa.request_id = r.slug        
     JOIN places p                 ON p.external_id = rpa.place_external_id
     LEFT JOIN place_mock pm       ON pm.external_id = p.external_id
     WHERE r.slug = :slug

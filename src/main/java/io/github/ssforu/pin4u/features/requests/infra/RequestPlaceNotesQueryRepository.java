@@ -39,7 +39,7 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
             p.place_url   AS place_url
         FROM requests r
         JOIN request_place_aggregates rpa
-          ON rpa.request_id::text = r.slug
+          ON rpa.request_id = r.slug
         JOIN places p
           ON p.external_id = rpa.place_external_id
         WHERE r.slug = :slug
@@ -60,7 +60,7 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
             rn.created_at                AS created_at
         FROM requests r
         JOIN request_place_aggregates rpa
-          ON rpa.request_id::text = r.slug
+          ON rpa.request_id = r.slug
         JOIN places p
           ON p.external_id = rpa.place_external_id
         JOIN recommendation_notes rn
@@ -91,7 +91,7 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
             ) AS tags_json
         FROM requests r
         JOIN request_place_aggregates rpa
-          ON rpa.request_id::text = r.slug
+          ON rpa.request_id = r.slug
         JOIN places p
           ON p.external_id = rpa.place_external_id
         JOIN recommendation_notes rn
@@ -108,7 +108,7 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
     @Query(value = """
         SELECT p.external_id
         FROM requests r
-        JOIN request_place_aggregates rpa ON rpa.request_id::text = r.slug
+        JOIN request_place_aggregates rpa ON rpa.request_id = r.slug
         JOIN places p ON p.external_id = rpa.place_external_id
         WHERE r.slug = :slug
         """, nativeQuery = true)
