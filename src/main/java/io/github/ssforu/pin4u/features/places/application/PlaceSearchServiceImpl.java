@@ -1,3 +1,4 @@
+// src/main/java/io/github/ssforu/pin4u/features/places/application/PlaceSearchServiceImpl.java
 package io.github.ssforu.pin4u.features.places.application;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -10,7 +11,6 @@ import io.github.ssforu.pin4u.features.places.dto.PlaceDtos;
 import io.github.ssforu.pin4u.features.places.infra.PlaceMockRepository;
 import io.github.ssforu.pin4u.features.places.infra.PlaceRepositoryAdapterImpl;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
-// import lombok.RequiredArgsConstructor; // ❌ 쓰지 마세요
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,8 +51,11 @@ public class PlaceSearchServiceImpl implements PlaceSearchService {
     }
 
     @Override
-    @Transactional // write 허용
-    public PlaceDtos.SearchResponse search(String stationCode, String q) {
+    @Transactional // write 허용(places upsert 포함)
+    public PlaceDtos.SearchResponse search(String stationCode, String q, Integer limit) {
+        // 0) limit 정규화 (1~50만 허용, 아니면 topN 사용)
+        final int size = (limit != null && limit >= 1 && limit <= 50) ? limit : topN;
+
         // 1) 입력 정리/검증
         final String station = (stationCode == null) ? null : stationCode.trim();
         final String keyword = (q == null) ? null : q.trim();
@@ -73,9 +76,9 @@ public class PlaceSearchServiceImpl implements PlaceSearchService {
         BigDecimal lat = st.getLat();
         BigDecimal lng = st.getLng();
 
-        // 4) 카카오 검색 (반경/TopN 정책 적용)
+        // 4) 카카오 검색 (반경/TopN→size 정책 적용)
         List<KakaoPayload.Document> docs =
-                kakaoSearchPort.keywordSearch(lat, lng, keyword, radiusM, topN);
+                kakaoSearchPort.keywordSearch(lat, lng, keyword, radiusM, size);
 
         // 5) places upsert
         placeUpsertAdapter.upsertFromKakao(docs);
@@ -89,7 +92,7 @@ public class PlaceSearchServiceImpl implements PlaceSearchService {
                                 Function.identity()
                         ));
 
-        // 7) DTO 조립 + 정렬
+        // 7) DTO 조립 + 정렬 (거리↑ → 평점↓ → 평점수↓), 그리고 size 제한
         List<PlaceDtos.Item> items = docs.stream().map(d -> {
             String externalId = "kakao:" + d.id();
             Integer distanceM = safeDistance(d, lat, lng);
@@ -135,7 +138,7 @@ public class PlaceSearchServiceImpl implements PlaceSearchService {
                                         .map(PlaceDtos.MockDto::rating_count).orElse(0),
                                 Comparator.reverseOrder()
                         )
-        ).limit(topN).toList();
+        ).limit(size).toList();
 
         // 8) 역 요약
         var stationBrief = new PlaceDtos.StationBrief(

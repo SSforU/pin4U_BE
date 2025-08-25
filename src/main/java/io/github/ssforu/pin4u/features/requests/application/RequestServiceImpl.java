@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/requests/application/RequestServiceImpl.java
 package io.github.ssforu.pin4u.features.requests.application;
 
 import io.github.ssforu.pin4u.features.requests.domain.Request;
@@ -10,7 +9,9 @@ import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.stream.Collectors;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,6 +23,12 @@ public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final StationRepository stationRepository;
     private final SlugGenerator slugGenerator;
+
+    // ✅ 레거시 코드 -> 정규 코드 간이 매핑 (필요 시 여기 추가)
+    private static final Map<String, String> LEGACY_ALIAS = Map.of(
+            "7-733", "S0701"
+            // "111-1", "S1101" 처럼 필요시 추가
+    );
 
     // JSON 문자열에서 단순 추출용 패턴
     private static final Pattern CODE_P = Pattern.compile("\\\"code\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
@@ -42,10 +49,10 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public RequestDtos.CreatedRequestDTO create(String ownerNickname, String stationCodeRaw, String requestMessage) {
 
-        // ✅ 입력을 '저장에 쓸 코드'로 정규화하되, 못 찾으면 그대로 저장(400 금지)
+        // ✅ 저장에 사용할 스테이션 코드를 '반드시' 확정 (DB 존재 or 매핑)
         String normalizedCode = resolveStationCodeLenient(stationCodeRaw);
 
-        // slug seed는 정규화된 코드 사용(정규코드면 그걸, 레거시면 레거시 그대로)
+        // slug seed는 확정된 코드 사용
         String slug = slugGenerator.generate(normalizedCode);
 
         Request saved = requestRepository.save(
@@ -62,31 +69,66 @@ public class RequestServiceImpl implements RequestService {
     }
 
     /**
-     * 가능한 경우 DB의 정규코드로 매핑.
-     * - 정규코드(S0701 등) -> 그대로 저장
-     * - JSON 문자열 -> name/line 또는 code로 DB 조회 성공 시 정규코드로 저장
-     * - 레거시(7-733, 111-1 등) -> DB에 동일 code가 없더라도 '그대로 저장' (여기서 400 안 냄)
-     * - 그 외 알 수 없는 문자열 -> DB에 없더라도 '그대로 저장'
+     * 🔧 인터페이스 시그니처에 맞춘 단건 조회
+     * 반환 타입: RequestDtos.ListItem  (리스트 응답과 동일한 필드셋: station_code 제외)
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public RequestDtos.ListItem get(String slug) {
+        Request r = requestRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("request not found: " + slug));
+
+        Station st = null;
+        if (r.getStationCode() != null && !r.getStationCode().isBlank()) {
+            st = stationRepository.findByCode(r.getStationCode()).orElse(null);
+        }
+
+        String stationName = (st != null) ? st.getName() : null;
+        String stationLine = (st != null) ? st.getLine() : null;
+
+        return new RequestDtos.ListItem(
+                r.getSlug(),          // slug
+                stationName,          // station_name
+                stationLine,          // station_line
+                null,                 // road_address_name (현재는 null)
+                r.getRecommendCount(),
+                r.getCreatedAt()
+        );
+    }
+
+    /**
+     * 입력을 DB의 정규코드로 확정한다.
+     * - 정규코드(S0701 등)면 그대로.
+     * - 레거시(7-733 등)는 간이 매핑 → 정규코드.
+     * - JSON 문자열이면 code/name+line로 조회 → 정규코드.
+     * - 위 경로로 확정 실패 시 IllegalArgumentException 던져 400으로 종료(→ FK로 인한 500 방지).
      */
     private String resolveStationCodeLenient(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
-            // 완전 공백만 400
             throw new IllegalArgumentException("station_code is required");
         }
         String s = raw.trim();
 
-        // 1) 정규코드/기타 문자열: DB에 있으면 그 코드(정규코드일 가능성 큼)
-        Optional<Station> byExact = stationRepository.findByCode(s);
-        if (byExact.isPresent()) {
-            return byExact.get().getCode();
+        // 0) 레거시 별칭 우선 치환
+        if (LEGACY_ALIAS.containsKey(s)) {
+            return ensureExistsOrThrow(LEGACY_ALIAS.get(s), raw);
         }
 
-        // 2) JSON 문자열로 온 경우: code, name+line 순서로 매핑 시도
+        // 1) 정확히 코드로 존재?
+        Optional<Station> byExact = stationRepository.findByCode(s);
+        if (byExact.isPresent()) return byExact.get().getCode();
+
+        // 2) JSON 문자열인 경우
         if ((s.startsWith("{") && s.endsWith("}")) || s.startsWith("\"{")) {
             String json = trimQuotesIfNeeded(s);
 
             String codeFromJson = extract(CODE_P, json);
             if (codeFromJson != null) {
+                // 2-1) JSON 안의 code가 레거시면 매핑
+                if (LEGACY_ALIAS.containsKey(codeFromJson)) {
+                    return ensureExistsOrThrow(LEGACY_ALIAS.get(codeFromJson), raw);
+                }
+                // 2-2) 정규코드로 존재하면 그대로
                 Optional<Station> byJsonCode = stationRepository.findByCode(codeFromJson);
                 if (byJsonCode.isPresent()) return byJsonCode.get().getCode();
             }
@@ -95,7 +137,6 @@ public class RequestServiceImpl implements RequestService {
             String line = extract(LINE_P, json);
 
             if (name != null && line != null) {
-                // name + line으로 조회 (StationRepository에 해당 메서드가 이미 존재해야 함)
                 Optional<Station> byNameLine = stationRepository.findByNameAndLine(name, line);
                 if (byNameLine.isPresent()) return byNameLine.get().getCode();
 
@@ -106,20 +147,30 @@ public class RequestServiceImpl implements RequestService {
                 }
             }
 
-            // JSON에서 못 찾으면: code가 있었다면 그걸, 아니면 원문 그대로 저장
-            if (codeFromJson != null && !codeFromJson.isBlank()) return codeFromJson;
-            return s;
+            // 여기까지 못 찾으면 무효
+            throw new IllegalArgumentException("invalid station_code: " + raw);
         }
 
-        // 3) 레거시(숫자-숫자) 포맷: DB에 없더라도 그대로 저장 (여기서 더 이상 400 안 냄)
+        // 3) 레거시 포맷 "7-733" 등
         if (LEGACY_CODE_P.matcher(s).matches()) {
+            if (LEGACY_ALIAS.containsKey(s)) {
+                return ensureExistsOrThrow(LEGACY_ALIAS.get(s), raw);
+            }
+            // 혹시 DB에 그대로 들어있는 경우도 마지막으로 체크
             Optional<Station> byLegacyAsCode = stationRepository.findByCode(s);
             if (byLegacyAsCode.isPresent()) return byLegacyAsCode.get().getCode();
-            return s; // ✅ 그대로 저장
+            throw new IllegalArgumentException("invalid station_code: " + raw);
         }
 
-        // 4) 그 외: DB에 없더라도 그대로 저장
-        return s;
+        // 4) 그 외 문자열은 무효
+        throw new IllegalArgumentException("invalid station_code: " + raw);
+    }
+
+    // 주어진 코드가 DB에 있는지 보증, 없으면 400
+    private String ensureExistsOrThrow(String code, String raw) {
+        Optional<Station> st = stationRepository.findByCode(code);
+        if (st.isPresent()) return st.get().getCode();
+        throw new IllegalArgumentException("invalid station_code: " + raw);
     }
 
     private String trimQuotesIfNeeded(String s) {
@@ -150,17 +201,39 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RequestDtos.ListItem> list() {
-        return requestRepository.findAllByOrderByCreatedAtDesc()
-                .stream()
-                .map(r -> new RequestDtos.ListItem(
-                        r.getSlug(),
-                        r.getOwnerNickname(),
-                        r.getStationCode(),
-                        r.getRequestMessage(),
-                        r.getRecommendCount(),
-                        r.getCreatedAt()
-                ))
+        // 1) 최신순 조회
+        final List<Request> requests = requestRepository.findAllByOrderByCreatedAtDesc();
+
+        // 2) 역 코드 배치 조회(N+1 방지)
+        final List<String> codes = requests.stream()
+                .map(Request::getStationCode)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
+
+        final Map<String, Station> stationMap = codes.isEmpty()
+                ? Map.of()
+                : stationRepository.findAllByCodeIn(codes).stream()
+                .collect(Collectors.toMap(Station::getCode, s -> s));
+
+        // 3) DTO 매핑 (필드 순서 = 응답 키 순서; 리스트 응답에는 station_code 제외)
+        return requests.stream()
+                .map(r -> {
+                    Station st = stationMap.get(r.getStationCode());
+                    String stationName = (st != null) ? st.getName() : null;
+                    String stationLine = (st != null) ? st.getLine() : null;
+
+                    return new RequestDtos.ListItem(
+                            r.getSlug(),          // slug
+                            stationName,          // station_name
+                            stationLine,          // station_line
+                            null,                 // road_address_name (현재는 null)
+                            r.getRecommendCount(),
+                            r.getCreatedAt()
+                    );
+                })
                 .toList();
     }
 }

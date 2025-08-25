@@ -1,7 +1,10 @@
 // src/main/java/io/github/ssforu/pin4u/features/recommendations/dto/RecommendationDtos.java
 package io.github.ssforu.pin4u.features.recommendations.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.*;
 
@@ -20,12 +23,13 @@ public final class RecommendationDtos {
     }
 
     public static class SubmitItem {
-        @JsonProperty("external_id") private String externalId;
-        @JsonProperty("recommender_nickname") private String recommenderNickname;
-        @JsonProperty("recommend_message") private String recommendMessage;
-        @JsonProperty("image_url") private String imageUrl;
-        @JsonProperty("tags") private List<String> tags;
-        @JsonProperty("guest_id") private String guestId;
+        // ↙︎ 프론트 camelCase도 허용
+        @JsonProperty("external_id")           @JsonAlias("externalId")            private String externalId;
+        @JsonProperty("recommender_nickname")  @JsonAlias("recommenderNickname")   private String recommenderNickname;
+        @JsonProperty("recommend_message")     @JsonAlias("recommendMessage")      private String recommendMessage;
+        @JsonProperty("image_url")             @JsonAlias("imageUrl")              private String imageUrl;
+        @JsonProperty("tags")                                                      private List<String> tags;
+        @JsonProperty("guest_id")              @JsonAlias("guestId")               private String guestId;
 
         public SubmitItem() {}
         public SubmitItem(String externalId, String recommenderNickname, String recommendMessage,
@@ -37,7 +41,6 @@ public final class RecommendationDtos {
             this.tags = tags;
             this.guestId = guestId;
         }
-
         public String getExternalId() { return externalId; }
         public String getRecommenderNickname() { return recommenderNickname; }
         public String getRecommendMessage() { return recommendMessage; }
@@ -46,19 +49,20 @@ public final class RecommendationDtos {
         public String getGuestId() { return guestId; }
     }
 
-    // 응답 바디
+    // 응답 바디(스네이크 케이스 보장)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class SubmitResponse {
         private List<SavedItem> saved = new ArrayList<>();
         private List<SimpleItem> conflicts = new ArrayList<>();
-        private List<OutOfRadiusItem> out_of_radius = new ArrayList<>();
-        private List<SimpleItem> not_found = new ArrayList<>();
+        private List<OutOfRadiusItem> outOfRadius = new ArrayList<>();
+        private List<SimpleItem> notFound = new ArrayList<>();
         private List<InvalidItem> invalid = new ArrayList<>();
         private Map<String, Integer> totals = new LinkedHashMap<>();
 
         public List<SavedItem> getSaved() { return saved; }
         public List<SimpleItem> getConflicts() { return conflicts; }
-        public List<OutOfRadiusItem> getOutOfRadius() { return out_of_radius; }
-        public List<SimpleItem> getNotFound() { return not_found; }
+        public List<OutOfRadiusItem> getOutOfRadius() { return outOfRadius; }
+        public List<SimpleItem> getNotFound() { return notFound; }
         public List<InvalidItem> getInvalid() { return invalid; }
         public Map<String, Integer> getTotals() { return totals; }
     }
@@ -66,7 +70,6 @@ public final class RecommendationDtos {
     public static class SavedItem {
         @JsonProperty("external_id") private String externalId;
         @JsonProperty("recommended_count") private int recommendedCount;
-
         public SavedItem() {}
         public SavedItem(String externalId, int recommendedCount) {
             this.externalId = externalId; this.recommendedCount = recommendedCount;

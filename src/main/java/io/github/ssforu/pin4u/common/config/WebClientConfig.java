@@ -15,15 +15,30 @@ public class WebClientConfig {
     @Bean
     public WebClient kakaoWebClient(
             WebClient.Builder builder,
-            @Value("${app.kakao.api.base-url}") String baseUrl,
-            @Value("${app.kakao.api.key}") String apiKey
+            @Value("${app.kakao.enabled:true}") boolean enabled,
+            // base-url은 없으면 기본값 사용
+            @Value("${app.kakao.api.base-url:https://dapi.kakao.com}") String baseUrl,
+            // api.key 우선, 없으면 rest-api-key 사용(둘 다 없으면 빈 문자열)
+            @Value("${app.kakao.api.key:}") String apiKeyFromApi,
+            @Value("${app.kakao.rest-api-key:}") String apiKeyFromRest
     ) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException(
-                    "KAKAO_REST_API_KEY 환경변수가 설정되지 않았습니다. " +
-                            "IntelliJ Run/Debug 설정 또는 셸에서 환경변수를 주입해 주세요.");
+        final String apiKey = (apiKeyFromApi != null && !apiKeyFromApi.isBlank())
+                ? apiKeyFromApi
+                : (apiKeyFromRest != null ? apiKeyFromRest : "");
+
+        if (!enabled) {
+            // 기능 비활성: 호출 쪽(KakaoSearchAdapterImpl)이 enabled=false로 자체 차단
+            log.info("[KAKAO] disabled by config. base={}", baseUrl);
+            return builder.baseUrl(baseUrl).build();
         }
-        log.info("[KAKAO] base={}, key.len={}", baseUrl, apiKey.length());
+
+        if (apiKey.isBlank()) {
+            // 기능은 켜져 있지만 키가 없음 → 런타임 호출 시 401 날 수 있으나, 앱은 부팅 성공
+            log.warn("[KAKAO] enabled=true 이지만 API 키가 없습니다. Authorization 없이 생성합니다. (호출 시 401 가능)");
+            return builder.baseUrl(baseUrl).build();
+        }
+
+        log.info("[KAKAO] enabled. base={}, key.len={}", baseUrl, apiKey.length());
         return builder
                 .baseUrl(baseUrl)
                 .defaultHeader("Authorization", "KakaoAK " + apiKey)

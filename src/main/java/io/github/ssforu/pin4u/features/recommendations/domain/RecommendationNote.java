@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "recommendation_notes")
+@Table(name = "recommendation_notes"
+//  ※ 동시성까지 잡으려면 DB에 UNIQUE(rpa_id, guest_id) 권장 (운영 DB 확인 필요)
+// , uniqueConstraints = @UniqueConstraint(name = "uq_note_rpa_guest", columnNames = {"rpa_id","guest_id"})
+)
 public class RecommendationNote {
 
     @Id
@@ -30,7 +33,7 @@ public class RecommendationNote {
     @Column(name = "image_url", length = 300)
     private String imageUrl;
 
-    // JSONB ↔ List<String>
+    // JSONB ←→ List<String>
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tags", columnDefinition = "jsonb")
     private List<String> tags;
@@ -60,6 +63,14 @@ public class RecommendationNote {
         this.tags = tags;
         this.guestId = guestId;
         this.createdAt = createdAt;
+    }
+
+    /** created_at 누락 시 자동 세팅 */
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = OffsetDateTime.now();
+        }
     }
 
     public Long getId() { return id; }

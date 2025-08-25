@@ -9,50 +9,52 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-// ⚠️ GidCookieFilter 가 @Component 또는 @Bean 으로 등록되어 있어야 합니다.
-// 만약 @Component 가 아니라면 아래에 @Bean 으로 직접 등록하세요.
-// @Bean
-// public GidCookieFilter gidCookieFilter() { return new GidCookieFilter(); }
-
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**") // 모든 API 경로
-                .allowedOrigins("*") // 허용할 Origin
-                .allowedMethods("*") // GET, POST, PUT, DELETE, OPTIONS 등 모두
-                .allowedHeaders("*") // 모든 헤더 허용
-                .allowCredentials(false);
+        registry.addMapping("/**")
+                // 프리뷰까지 안정적으로 허용하기 위해 allowedOriginPatterns 사용
+                .allowedOriginPatterns(
+                        // 로컬
+                        "http://localhost:5173",
+                        "https://localhost:5173",
+                        "http://localhost:5175",
+                        "https://localhost:5175",
+                        // Vercel 프로덕션
+                        "https://pin4-u-fe.vercel.app",
+                        // Vercel 프리뷰(브랜치/PR)
+                        "https://pin4-u-fe-*.vercel.app",
+                        // 서비스 커스텀 도메인(웹앱)
+                        "https://ss4u-pin4u.store",
+                        "https://www.ss4u-pin4u.store"
+                        // ※ API 자신(https://api.ss4u-...)은 요청 Origin이 아니므로 보통 불필요
+                )
+                .allowedMethods("GET","POST","PUT","DELETE","PATCH","OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+        // 필요 시: .exposedHeaders("X-Request-Id");
     }
 
-
+    /** GID 쿠키 필터를 가장 먼저 실행 */
     @Bean
-    FilterRegistrationBean<GidCookieFilter> gidFilter(GidCookieFilter f){
-        FilterRegistrationBean<GidCookieFilter> b = new FilterRegistrationBean<>(f);
-        b.setOrder(1); // 먼저 gid 부여
+    FilterRegistrationBean<GidCookieFilter> gidFilter(GidCookieFilter filter) {
+        FilterRegistrationBean<GidCookieFilter> b = new FilterRegistrationBean<>(filter);
+        b.setOrder(1);
         b.addUrlPatterns("/*");
         return b;
     }
 
-    // ✅ 로컬 기본 OFF. 필요한 프로파일/환경에서만 ON.
+    /** (옵션) 레이트리밋: 필요한 환경에서만 ON */
     @Bean
     @ConditionalOnClass(RateLimitFilter.class)
     @ConditionalOnProperty(prefix = "app.ratelimit", name = "enabled", havingValue = "true")
-    FilterRegistrationBean<RateLimitFilter> rlFilter(){
-        RateLimitFilter f = new RateLimitFilter(); // 주입받지 않고 직접 생성
+    FilterRegistrationBean<RateLimitFilter> rlFilter() {
+        RateLimitFilter f = new RateLimitFilter();
         FilterRegistrationBean<RateLimitFilter> b = new FilterRegistrationBean<>(f);
-        b.setOrder(2); // 이후 레이트리밋
+        b.setOrder(2);
         b.addUrlPatterns("/*");
-        // 필요하면 init-param 설정 (톰캣 RateLimitFilter 문서 기준 키를 정확히 사용하세요)
-        // b.addInitParameter("requests", "100");
-        // b.addInitParameter("window", "PT1M"); // ISO-8601 duration 예시
         return b;
     }
-
-    // WebConfig 에 추가 (이미 @Component면 불필요) - 0단계 헷갈리는 거에서 추가
-    @Bean
-    public GidCookieFilter gidCookieFilter() {
-        return new GidCookieFilter();
-    }
-
 }

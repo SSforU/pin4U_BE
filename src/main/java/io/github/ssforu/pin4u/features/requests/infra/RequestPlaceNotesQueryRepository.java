@@ -105,4 +105,13 @@ public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long
             @Param("slug") String slug,
             @Param("externalIds") String[] externalIds
     );
+    @Query(value = """
+        SELECT p.external_id
+        FROM requests r
+        JOIN request_place_aggregates rpa ON rpa.request_id = r.slug
+        JOIN places p ON p.external_id = rpa.place_external_id
+        WHERE r.slug = :slug
+        """, nativeQuery = true)
+    List<String> findAllRecommendedExternalIds(@Param("slug") String slug);
+
 }
