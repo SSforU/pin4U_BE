@@ -127,8 +127,7 @@ BEGIN
           AND constraint_name = 'chk_place_summaries_evidence_array_max5'
     ) THEN
         EXECUTE $sql$
-            ALTER TABLE place_summariesgit grep -n "request_id" src/main/resources/db/migration
-
+            ALTER TABLE place_summaries
             ADD CONSTRAINT chk_place_summaries_evidence_array_max5
             CHECK (
                 evidence IS NULL
