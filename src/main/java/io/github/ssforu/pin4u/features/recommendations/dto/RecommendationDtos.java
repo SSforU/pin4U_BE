@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/recommendations/dto/RecommendationDtos.java
 package io.github.ssforu.pin4u.features.recommendations.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -14,16 +13,13 @@ public final class RecommendationDtos {
     // 요청 바디
     public static class SubmitRequest {
         private List<SubmitItem> items;
-
         public SubmitRequest() {}
         public SubmitRequest(List<SubmitItem> items) { this.items = items; }
-
         public List<SubmitItem> getItems() { return items; }
         public void setItems(List<SubmitItem> items) { this.items = items; }
     }
 
     public static class SubmitItem {
-        // ↙︎ 프론트 camelCase도 허용
         @JsonProperty("external_id")           @JsonAlias("externalId")            private String externalId;
         @JsonProperty("recommender_nickname")  @JsonAlias("recommenderNickname")   private String recommenderNickname;
         @JsonProperty("recommend_message")     @JsonAlias("recommendMessage")      private String recommendMessage;
@@ -34,12 +30,9 @@ public final class RecommendationDtos {
         public SubmitItem() {}
         public SubmitItem(String externalId, String recommenderNickname, String recommendMessage,
                           String imageUrl, List<String> tags, String guestId) {
-            this.externalId = externalId;
-            this.recommenderNickname = recommenderNickname;
-            this.recommendMessage = recommendMessage;
-            this.imageUrl = imageUrl;
-            this.tags = tags;
-            this.guestId = guestId;
+            this.externalId = externalId; this.recommenderNickname = recommenderNickname;
+            this.recommendMessage = recommendMessage; this.imageUrl = imageUrl;
+            this.tags = tags; this.guestId = guestId;
         }
         public String getExternalId() { return externalId; }
         public String getRecommenderNickname() { return recommenderNickname; }

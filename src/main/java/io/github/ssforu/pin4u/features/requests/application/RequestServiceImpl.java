@@ -2,6 +2,7 @@ package io.github.ssforu.pin4u.features.requests.application;
 
 import io.github.ssforu.pin4u.features.requests.domain.Request;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDtos;
+import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepository;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.requests.infra.SlugGenerator;
 import io.github.ssforu.pin4u.features.stations.domain.Station;
@@ -23,11 +24,11 @@ public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final StationRepository stationRepository;
     private final SlugGenerator slugGenerator;
+    private final RequestPlaceAggregateRepository rpaRepository;
 
-    // ✅ 레거시 코드 -> 정규 코드 간이 매핑 (필요 시 여기 추가)
+    // ✅ 레거시 코드 -> 정규 코드 간이 매핑 (필요 시 확장)
     private static final Map<String, String> LEGACY_ALIAS = Map.of(
             "7-733", "S0701"
-            // "111-1", "S1101" 처럼 필요시 추가
     );
 
     // JSON 문자열에서 단순 추출용 패턴
@@ -40,17 +41,18 @@ public class RequestServiceImpl implements RequestService {
 
     public RequestServiceImpl(RequestRepository requestRepository,
                               StationRepository stationRepository,
-                              SlugGenerator slugGenerator) {
+                              SlugGenerator slugGenerator,
+                              RequestPlaceAggregateRepository rpaRepository) {
         this.requestRepository = requestRepository;
         this.stationRepository = stationRepository;
         this.slugGenerator = slugGenerator;
+        this.rpaRepository = rpaRepository;
     }
 
     @Override
     public RequestDtos.CreatedRequestDTO create(String ownerNickname, String stationCodeRaw, String requestMessage) {
-
-        // ✅ 저장에 사용할 스테이션 코드를 '반드시' 확정 (DB 존재 or 매핑)
-        String normalizedCode = resolveStationCodeLenient(stationCodeRaw);
+        // ✅ 저장에 사용할 스테이션 코드를 '반드시' 확정 (존재/매핑 보장)
+        String normalizedCode = resolveStationCodeOr400(stationCodeRaw);
 
         // slug seed는 확정된 코드 사용
         String slug = slugGenerator.generate(normalizedCode);
@@ -68,10 +70,7 @@ public class RequestServiceImpl implements RequestService {
         );
     }
 
-    /**
-     * 🔧 인터페이스 시그니처에 맞춘 단건 조회
-     * 반환 타입: RequestDtos.ListItem  (리스트 응답과 동일한 필드셋: station_code 제외)
-     */
+    /** 단건 상세 (slug로 조회) — recommend_count는 합계로 계산 */
     @Override
     @Transactional(readOnly = true)
     public RequestDtos.ListItem get(String slug) {
@@ -82,28 +81,83 @@ public class RequestServiceImpl implements RequestService {
         if (r.getStationCode() != null && !r.getStationCode().isBlank()) {
             st = stationRepository.findByCode(r.getStationCode()).orElse(null);
         }
-
         String stationName = (st != null) ? st.getName() : null;
         String stationLine = (st != null) ? st.getLine() : null;
+
+        int total = Optional.ofNullable(rpaRepository.sumByRequestId(slug)).orElse(0L).intValue();
 
         return new RequestDtos.ListItem(
                 r.getSlug(),          // slug
                 stationName,          // station_name
                 stationLine,          // station_line
-                null,                 // road_address_name (현재는 null)
-                r.getRecommendCount(),
+                null,                 // road_address_name (현재는 null/생략)
+                total,                // ✅ 합계
                 r.getCreatedAt()
         );
     }
+
+    /** 리스트 — recommend_count는 합계로 계산 */
+    @Override
+    @Transactional(readOnly = true)
+    public List<RequestDtos.ListItem> list() {
+        // 1) 최신순 요청
+        final List<Request> requests = requestRepository.findAllByOrderByCreatedAtDesc();
+
+        // 2) 역 코드 배치 조회(N+1 방지)
+        final List<String> codes = requests.stream()
+                .map(Request::getStationCode)
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
+
+        final Map<String, Station> stationMap = codes.isEmpty()
+                ? Map.of()
+                : stationRepository.findAllByCodeIn(codes).stream()
+                .collect(Collectors.toMap(Station::getCode, s -> s));
+
+        // 2.5) 합계 배치 조회 (slug 기준)
+        final List<String> slugs = requests.stream()
+                .map(Request::getSlug)
+                .collect(Collectors.toList());
+
+        final Map<String, Integer> totalMap =
+                slugs.isEmpty() ? Map.of()
+                        : rpaRepository.sumByRequestIds(slugs).stream()
+                        .collect(Collectors.toMap(
+                                RequestPlaceAggregateRepository.SumRow::getRequestId,
+                                row -> row.getTotal() == null ? 0 : row.getTotal().intValue()
+                        ));
+
+        // 3) DTO 매핑 (station_code는 응답에서 제외)
+        return requests.stream()
+                .map(r -> {
+                    Station st = stationMap.get(r.getStationCode());
+                    String stationName = (st != null) ? st.getName() : null;
+                    String stationLine = (st != null) ? st.getLine() : null;
+                    int total = totalMap.getOrDefault(r.getSlug(), 0);
+
+                    return new RequestDtos.ListItem(
+                            r.getSlug(),          // slug
+                            stationName,          // station_name
+                            stationLine,          // station_line
+                            null,                 // road_address_name (지금은 null)
+                            total,                // ✅ 합계
+                            r.getCreatedAt()
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    // ===== 내부 유틸 =====
 
     /**
      * 입력을 DB의 정규코드로 확정한다.
      * - 정규코드(S0701 등)면 그대로.
      * - 레거시(7-733 등)는 간이 매핑 → 정규코드.
      * - JSON 문자열이면 code/name+line로 조회 → 정규코드.
-     * - 위 경로로 확정 실패 시 IllegalArgumentException 던져 400으로 종료(→ FK로 인한 500 방지).
+     * - 실패 시 IllegalArgumentException 던져 400 (FK로 500 방지).
      */
-    private String resolveStationCodeLenient(String raw) {
+    private String resolveStationCodeOr400(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
             throw new IllegalArgumentException("station_code is required");
         }
@@ -124,11 +178,11 @@ public class RequestServiceImpl implements RequestService {
 
             String codeFromJson = extract(CODE_P, json);
             if (codeFromJson != null) {
-                // 2-1) JSON 안의 code가 레거시면 매핑
+                // JSON 안의 code가 레거시면 매핑
                 if (LEGACY_ALIAS.containsKey(codeFromJson)) {
                     return ensureExistsOrThrow(LEGACY_ALIAS.get(codeFromJson), raw);
                 }
-                // 2-2) 정규코드로 존재하면 그대로
+                // 정규코드로 존재하면 그대로
                 Optional<Station> byJsonCode = stationRepository.findByCode(codeFromJson);
                 if (byJsonCode.isPresent()) return byJsonCode.get().getCode();
             }
@@ -147,7 +201,6 @@ public class RequestServiceImpl implements RequestService {
                 }
             }
 
-            // 여기까지 못 찾으면 무효
             throw new IllegalArgumentException("invalid station_code: " + raw);
         }
 
@@ -156,7 +209,6 @@ public class RequestServiceImpl implements RequestService {
             if (LEGACY_ALIAS.containsKey(s)) {
                 return ensureExistsOrThrow(LEGACY_ALIAS.get(s), raw);
             }
-            // 혹시 DB에 그대로 들어있는 경우도 마지막으로 체크
             Optional<Station> byLegacyAsCode = stationRepository.findByCode(s);
             if (byLegacyAsCode.isPresent()) return byLegacyAsCode.get().getCode();
             throw new IllegalArgumentException("invalid station_code: " + raw);
@@ -198,42 +250,5 @@ public class RequestServiceImpl implements RequestService {
             }
         }
         return List.of(trimmed);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RequestDtos.ListItem> list() {
-        // 1) 최신순 조회
-        final List<Request> requests = requestRepository.findAllByOrderByCreatedAtDesc();
-
-        // 2) 역 코드 배치 조회(N+1 방지)
-        final List<String> codes = requests.stream()
-                .map(Request::getStationCode)
-                .filter(s -> s != null && !s.isBlank())
-                .distinct()
-                .toList();
-
-        final Map<String, Station> stationMap = codes.isEmpty()
-                ? Map.of()
-                : stationRepository.findAllByCodeIn(codes).stream()
-                .collect(Collectors.toMap(Station::getCode, s -> s));
-
-        // 3) DTO 매핑 (필드 순서 = 응답 키 순서; 리스트 응답에는 station_code 제외)
-        return requests.stream()
-                .map(r -> {
-                    Station st = stationMap.get(r.getStationCode());
-                    String stationName = (st != null) ? st.getName() : null;
-                    String stationLine = (st != null) ? st.getLine() : null;
-
-                    return new RequestDtos.ListItem(
-                            r.getSlug(),          // slug
-                            stationName,          // station_name
-                            stationLine,          // station_line
-                            null,                 // road_address_name (현재는 null)
-                            r.getRecommendCount(),
-                            r.getCreatedAt()
-                    );
-                })
-                .toList();
     }
 }
