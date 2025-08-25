@@ -34,7 +34,6 @@ public class RequestController {
     @GetMapping
     public ApiResponse<Map<String, Object>> list() {
         List<RequestDtos.ListItem> items = requestService.list();
-        // 스펙: result + data.items 만
         Map<String, Object> data = Map.of("items", items);
         return ApiResponse.success(data);
     }

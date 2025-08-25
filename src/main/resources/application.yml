@@ -17,6 +17,8 @@ app:
   kakao:
     enabled: ${APP_KAKAO_ENABLED:true}     # ← 기본 ON, 필요하면 env로 false
     rest-api-key: ${KAKAO_REST_API_KEY:}   # ← 키는 반드시 env로
+    api:
+      base-url: https://dapi.kakao.com
   seed:
     enabled: false
   og:

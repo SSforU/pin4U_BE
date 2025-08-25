@@ -7,4 +7,6 @@ import java.util.List;
 public interface RequestService {
     RequestDtos.CreatedRequestDTO create(String ownerNickname, String stationCode, String requestMessage);
     List<RequestDtos.ListItem> list();
+    RequestDtos.ListItem get(String slug);
+
 }
