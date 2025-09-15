@@ -32,8 +32,10 @@ public class PlaceRepositoryAdapterImpl {
                             .categoryName(safe(d.category_name()))
                             .phone(safe(d.phone()))
                             .roadAddressName(safe(d.road_address_name()))
-                            .x(parseBd(d.x()))
-                            .y(parseBd(d.y()))
+                            /*.x(parseBd(d.x()))
+                            .y(parseBd(d.y()))*/
+                            .x(d.x()) // [FIX] 카카오 파리티: DB/엔티티에는 문자열로 보관 (연산은 사용 시점에 변환)
+                            .y(d.y()) // [FIX] 위와 동일
                             .placeUrl(safe(d.place_url()))
                             .createdAt(now)
                             .updatedAt(now)
@@ -44,8 +46,10 @@ public class PlaceRepositoryAdapterImpl {
             p.setCategoryName(safe(d.category_name()));
             p.setPhone(safe(d.phone()));
             p.setRoadAddressName(safe(d.road_address_name()));
-            p.setX(parseBd(d.x()));
-            p.setY(parseBd(d.y()));
+           /* p.setX(parseBd(d.x()));
+            p.setY(parseBd(d.y()));*/
+            p.setX(d.x()); // [FIX] 저장은 문자열(파싱 금지) — 불필요한 형변환로 인한 컴파일/런타임 이슈 방지
+            p.setY(d.y()); // [FIX] 저장은 문자열(파싱 금지)
             p.setPlaceUrl(safe(d.place_url()));
             p.setUpdatedAt(now);
 

@@ -1,3 +1,63 @@
+package io.github.ssforu.pin4u.features.requests.domain;
+
+import jakarta.persistence.*;
+import java.time.OffsetDateTime;
+
+@Entity
+@Table(name = "requests") // ✅ DB 테이블명 일치
+public class Request {
+
+    // ★ DB: id BIGSERIAL PRIMARY KEY
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
+    private Long id;
+
+    // ★ DB: slug VARCHAR(64) UNIQUE
+    @Column(name = "slug", nullable = false, length = 64, unique = true)
+    private String slug;
+
+    @Column(name = "owner_nickname", nullable = false, length = 50)
+    private String ownerNickname;
+
+    @Column(name = "station_code", nullable = false, length = 20)
+    private String stationCode;
+
+    // ★ DB: 500자 보장
+    @Column(name = "request_message", nullable = false, length = 500)
+    private String requestMessage;
+
+    @Column(name = "created_at", nullable = false)
+    private OffsetDateTime createdAt;
+
+    // (DB에 NOT NULL DEFAULT now()가 있으므로 맵핑은 선택)
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private OffsetDateTime updatedAt;
+
+    protected Request() {} // for JPA
+
+    public Request(String slug, String ownerNickname, String stationCode, String requestMessage) {
+        this.slug = slug;
+        this.ownerNickname = ownerNickname;
+        this.stationCode = stationCode;
+        this.requestMessage = requestMessage;
+        this.createdAt = OffsetDateTime.now();
+    }
+
+    // getters
+    public Long getId() { return id; }
+    public String getSlug() { return slug; }
+    public String getOwnerNickname() { return ownerNickname; }
+    public String getStationCode() { return stationCode; }
+    public String getRequestMessage() { return requestMessage; }
+    public OffsetDateTime getCreatedAt() { return createdAt; }
+    public OffsetDateTime getUpdatedAt() { return updatedAt; }
+}
+
+
+
+
+/*
 // src/main/java/io/github/ssforu/pin4u/features/requests/domain/Request.java
 package io.github.ssforu.pin4u.features.requests.domain;
 
@@ -46,3 +106,4 @@ public class Request {
     public int getRecommendCount() { return recommendCount; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }
+*/
