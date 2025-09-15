@@ -12,7 +12,7 @@ public class AppProperties {
     private final Og og = new Og();
     private final Summary summary = new Summary();
 
-    // ★ 코드에서 기대하는 메서드 이름 그대로 노출
+    // 코드에서 기대하는 메서드 이름 그대로 노출
     public Seed seed() { return seed; }
     public Kakao kakao() { return kakao; }
     public Og og() { return og; }

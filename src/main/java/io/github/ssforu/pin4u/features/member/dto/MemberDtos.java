@@ -7,4 +7,6 @@ public class MemberDtos {
             Long id, String nickname, String preference_text,
             Instant created_at, Instant updated_at
     ) {}
+
+    public record NicknamePatch(String nickname) {}
 }

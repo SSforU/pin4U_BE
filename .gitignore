@@ -29,3 +29,4 @@ out/
 
 
 .env
+src/main/resources/application-local.yml

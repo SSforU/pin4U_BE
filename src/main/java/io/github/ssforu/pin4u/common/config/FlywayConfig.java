@@ -10,6 +10,6 @@ public class FlywayConfig {
 
     @Bean
     public FlywayMigrationStrategy migrateOnly() {
-        return Flyway::migrate; // ✅ repair 제거
+        return Flyway::migrate; // repair 제거
     }
 }
