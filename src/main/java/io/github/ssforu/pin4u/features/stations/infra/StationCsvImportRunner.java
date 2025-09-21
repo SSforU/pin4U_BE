@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/stations/infra/StationCsvImportRunner.java
 package io.github.ssforu.pin4u.features.stations.infra;
 
 import io.github.ssforu.pin4u.features.stations.domain.Station;
@@ -8,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -25,6 +25,11 @@ import java.util.regex.Pattern;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@ConditionalOnProperty(
+        value = "pin4u.stations.import.enabled",
+        havingValue = "true",
+        matchIfMissing = false
+)
 public class StationCsvImportRunner implements ApplicationRunner {
 
     private final StationRepository stationRepository;
@@ -89,7 +94,7 @@ public class StationCsvImportRunner implements ApplicationRunner {
                 if (lat == null || lng == null) { skipped++; continue; }
                 if (!inSeoul(lat.doubleValue(), lng.doubleValue())) { skipped++; continue; }
 
-                // (name,line) 업서트 — 우선 정확히 일치, 없으면 이름 동일+라인 대소문자 무시
+                // (name,line) 업서트 — 정확 일치 우선
                 var ex = stationRepository.findByNameAndLine(name, line)
                         .or(() -> stationRepository.findAllByName(name).stream()
                                 .filter(s -> s.getLine().equalsIgnoreCase(line)).findFirst());
@@ -155,7 +160,6 @@ public class StationCsvImportRunner implements ApplicationRunner {
 
     private Map<String,Integer> preloadLineSeq() {
         Map<String,Integer> seq = new HashMap<>();
-        // 전체 스캔 (findAll 사용 → 구조 변경 불필요)
         for (Station s : stationRepository.findAll()) {
             Integer lineNo = extractLineNo(s.getLine());
             if (lineNo == null) continue;

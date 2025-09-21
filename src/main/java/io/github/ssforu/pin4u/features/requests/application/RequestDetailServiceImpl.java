@@ -49,7 +49,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
     }
 
     @Override
-    public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi /* 무시: 항상 시도 */) {
+    public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi /* ignored: always try */) {
         // 1) 요청/역 조회
         Request req = requestRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "request not found"));
@@ -113,7 +113,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                 .toArray(String[]::new);
         Map<String, List<String>> userTagsMap = notesQueryTags(slug, externalIds);
 
-        // 6) AI 요약 항상 시도(실패/비활성 시 ai 생략)
+        // 6) AI 요약 시도
         ListIterator<Item> it = items.listIterator();
         while (it.hasNext()) {
             Item cur = it.next();
@@ -129,14 +129,16 @@ public class RequestDetailServiceImpl implements RequestDetailService {
             );
 
             if (summaryOpt.isPresent()) {
-                Map<String, Object> ev = new LinkedHashMap<>();
-                ev.put("category_name", cur.categoryName());
-                ev.put("rating", rating);
-                ev.put("rating_count", ratingCount);
-                if (reviewSnippets != null && !reviewSnippets.isEmpty()) ev.put("review_snippets", reviewSnippets);
-                if (userTags != null && !userTags.isEmpty()) ev.put("user_tags", userTags);
+                // evidence를 JSON compact string으로 만들고 200자 제한
+                String evidence = toEvidenceJson200(Map.of(
+                        "category_name", cur.categoryName(),
+                        "rating",        rating,
+                        "rating_count",  ratingCount,
+                        "review_snippets", (reviewSnippets == null ? List.of() : reviewSnippets),
+                        "user_tags",       (userTags == null ? List.of() : userTags)
+                ));
 
-                Ai ai = new Ai(summaryOpt.get(), ev, OffsetDateTime.now());
+                Ai ai = new Ai(summaryOpt.get(), evidence, OffsetDateTime.now());
 
                 it.set(new Item(
                         cur.externalId(), cur.id(), cur.placeName(),
@@ -155,7 +157,6 @@ public class RequestDetailServiceImpl implements RequestDetailService {
         return new RequestDetailResponse(req.getSlug(), dtoStation, req.getRequestMessage(), items);
     }
 
-    /** r.slug + places IN (...) 컨텍스트에서 추천노트 태그를 집계 */
     private Map<String, List<String>> notesQueryTags(String slug, String[] externalIds) {
         if (externalIds == null || externalIds.length == 0) return Map.of();
         return notesQueryRepository.findTagsAggByExternalIds(slug, externalIds).stream()
@@ -178,5 +179,15 @@ public class RequestDetailServiceImpl implements RequestDetailService {
         if (v == null) return null;
         if (v instanceof BigDecimal bd) return bd;
         return new BigDecimal(v.toString());
+    }
+
+    /** evidence JSON 문자열을 200자 이내로 안전하게 축약 */
+    private String toEvidenceJson200(Map<String, ?> ev) {
+        try {
+            String s = objectMapper.writeValueAsString(ev);
+            return (s.length() <= 200) ? s : s.substring(0, 200);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

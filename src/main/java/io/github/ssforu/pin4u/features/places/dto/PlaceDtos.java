@@ -28,7 +28,7 @@ public final class PlaceDtos {
             String phone,
             String address_name,
             String road_address_name,
-            String x, // 응답은 문자열 파리티 유지
+            String x,
             String y,
             String place_url,
             Integer distance_m,

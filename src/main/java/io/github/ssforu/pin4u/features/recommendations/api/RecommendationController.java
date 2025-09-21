@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/recommendations/api/RecommendationController.java
 package io.github.ssforu.pin4u.features.recommendations.api;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
@@ -12,6 +11,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.NoSuchElementException;
 
+// ✅ Swagger 문서용 어노테이션 import
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "Recommendations")
 @RestController
 @RequestMapping("/api/requests/{slug}/recommendations")
 public class RecommendationController {
@@ -23,6 +27,7 @@ public class RecommendationController {
         this.service = service;
     }
 
+    @Operation(summary = "추천 장소 제출", description = "요청 슬러그에 대한 추천 장소들을 제출합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<RecommendationDtos.SubmitResponse>> submit(
             @PathVariable("slug") String slug,
@@ -44,7 +49,6 @@ public class RecommendationController {
             );
 
         } catch (DataIntegrityViolationException e) {
-            // ★ DB 제약/타입 불일치 시 정확한 원인까지 찍어줌 (프론트 콘솔/서버 로그에서 확인 가능)
             String msg = (e.getMostSpecificCause() != null) ? e.getMostSpecificCause().getMessage() : e.getMessage();
             log.error("DB upsert failed: {}", msg, e);
             return ResponseEntity.internalServerError().body(

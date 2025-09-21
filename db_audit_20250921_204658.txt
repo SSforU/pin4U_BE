@@ -1,0 +1,311 @@
+=== SERVER & DB INFO ===
+                                                           version                                                            
+------------------------------------------------------------------------------------------------------------------------------
+ PostgreSQL 17.5 (Homebrew) on aarch64-apple-darwin24.4.0, compiled by Apple clang version 17.0.0 (clang-1700.0.13.3), 64-bit
+(1 row)
+
+    db    |  sch   |  usr  
+----------+--------+-------
+ pin4u_be | public | pin4u
+(1 row)
+
+
+=== SCHEMAS ===
+ schema 
+--------
+ public
+(1 row)
+
+
+=== TABLES (public) ===
+        table_name        
+--------------------------
+ flyway_schema_history
+ group_members
+ group_visits
+ groups
+ place_mock
+ place_summaries
+ places
+ recommendation_notes
+ request_place_aggregates
+ requests
+ stations
+ users
+(12 rows)
+
+
+=== COLUMNS (public.*) ===
+        table_name        |     column_name      |          data_type          | len  | is_nullable |                    column_default                    
+--------------------------+----------------------+-----------------------------+------+-------------+------------------------------------------------------
+ flyway_schema_history    | installed_rank       | integer                     |      | NO          | 
+ flyway_schema_history    | version              | character varying           |   50 | YES         | 
+ flyway_schema_history    | description          | character varying           |  200 | NO          | 
+ flyway_schema_history    | type                 | character varying           |   20 | NO          | 
+ flyway_schema_history    | script               | character varying           | 1000 | NO          | 
+ flyway_schema_history    | checksum             | integer                     |      | YES         | 
+ flyway_schema_history    | installed_by         | character varying           |  100 | NO          | 
+ flyway_schema_history    | installed_on         | timestamp without time zone |      | NO          | now()
+ flyway_schema_history    | execution_time       | integer                     |      | NO          | 
+ flyway_schema_history    | success              | boolean                     |      | NO          | 
+ group_members            | group_id             | bigint                      |      | NO          | 
+ group_members            | user_id              | bigint                      |      | NO          | 
+ group_members            | role                 | character varying           |   10 | NO          | 
+ group_members            | status               | character varying           |   10 | NO          | 
+ group_members            | requested_at         | timestamp with time zone    |      | NO          | now()
+ group_members            | approved_at          | timestamp with time zone    |      | YES         | 
+ group_visits             | group_id             | bigint                      |      | NO          | 
+ group_visits             | user_id              | bigint                      |      | NO          | 
+ group_visits             | first_visited_at     | timestamp with time zone    |      | NO          | now()
+ groups                   | id                   | bigint                      |      | NO          | nextval('groups_id_seq'::regclass)
+ groups                   | slug                 | character varying           |   24 | NO          | 
+ groups                   | name                 | character varying           |   32 | NO          | 
+ groups                   | image_url            | character varying           | 1000 | YES         | 
+ groups                   | owner_user_id        | bigint                      |      | NO          | 
+ groups                   | created_at           | timestamp with time zone    |      | NO          | now()
+ groups                   | updated_at           | timestamp with time zone    |      | NO          | now()
+ place_mock               | external_id          | character varying           |   80 | NO          | 
+ place_mock               | rating               | numeric                     |      | YES         | 
+ place_mock               | rating_count         | integer                     |      | YES         | 
+ place_mock               | review_snippets      | jsonb                       |      | YES         | 
+ place_mock               | image_urls           | jsonb                       |      | YES         | 
+ place_mock               | opening_hours        | jsonb                       |      | YES         | 
+ place_mock               | updated_at           | timestamp with time zone    |      | NO          | now()
+ place_summaries          | summary_text         | character varying           |  500 | YES         | 
+ place_summaries          | place_name           | character varying           |  200 | YES         | 
+ place_summaries          | road_address_name    | character varying           |  300 | YES         | 
+ place_summaries          | phone                | character varying           |   50 | YES         | 
+ place_summaries          | opening_hours        | jsonb                       |      | YES         | 
+ place_summaries          | evidence             | character varying           |  200 | YES         | 
+ place_summaries          | updated_at           | timestamp with time zone    |      | NO          | now()
+ place_summaries          | place_id             | bigint                      |      | NO          | 
+ places                   | external_id          | character varying           |   64 | NO          | 
+ places                   | id_old               | character varying           |   50 | NO          | 
+ places                   | place_name           | character varying           |  100 | NO          | 
+ places                   | category_group_code  | character varying           |   10 | YES         | 
+ places                   | category_group_name  | character varying           |   50 | YES         | 
+ places                   | category_name        | character varying           |   64 | YES         | 
+ places                   | phone                | character varying           |   32 | YES         | 
+ places                   | address_name         | character varying           |  300 | YES         | 
+ places                   | road_address_name    | character varying           |  120 | YES         | 
+ places                   | x                    | character varying           |   50 | NO          | 
+ places                   | y                    | character varying           |   50 | NO          | 
+ places                   | place_url            | character varying           |  200 | YES         | 
+ places                   | created_at           | timestamp with time zone    |      | NO          | now()
+ places                   | updated_at           | timestamp with time zone    |      | NO          | now()
+ places                   | id                   | bigint                      |      | NO          | nextval('places_id_seq'::regclass)
+ recommendation_notes     | id                   | bigint                      |      | NO          | nextval('recommendation_notes_id_seq'::regclass)
+ recommendation_notes     | rpa_id               | bigint                      |      | NO          | 
+ recommendation_notes     | nickname             | character varying           |   50 | YES         | 
+ recommendation_notes     | recommend_message    | character varying           |  300 | YES         | 
+ recommendation_notes     | image_url            | character varying           |  300 | YES         | 
+ recommendation_notes     | tags                 | jsonb                       |      | YES         | 
+ recommendation_notes     | guest_id             | uuid                        |      | NO          | 
+ recommendation_notes     | created_at           | timestamp with time zone    |      | NO          | now()
+ recommendation_notes     | created_at_minute    | timestamp with time zone    |      | YES         | 
+ recommendation_notes     | image_is_public      | boolean                     |      | NO          | true
+ request_place_aggregates | id                   | bigint                      |      | NO          | nextval('request_place_aggregates_id_seq'::regclass)
+ request_place_aggregates | recommended_count    | integer                     |      | NO          | 0
+ request_place_aggregates | first_recommended_at | timestamp with time zone    |      | NO          | now()
+ request_place_aggregates | last_recommended_at  | timestamp with time zone    |      | NO          | now()
+ request_place_aggregates | request_id           | character varying           |   64 | NO          | 
+ request_place_aggregates | place_id             | bigint                      |      | NO          | 
+ requests                 | id                   | bigint                      |      | NO          | nextval('requests_id_seq'::regclass)
+ requests                 | slug                 | character varying           |   64 | NO          | 
+ requests                 | owner_user_id        | bigint                      |      | NO          | 1
+ requests                 | station_code         | character varying           |   20 | YES         | 
+ requests                 | request_message      | character varying           |  500 | NO          | 
+ requests                 | created_at           | timestamp with time zone    |      | NO          | now()
+ requests                 | updated_at           | timestamp with time zone    |      | NO          | now()
+ requests                 | owner_nickname       | character varying           |   50 | YES         | 
+ requests                 | recommend_count      | integer                     |      | NO          | 0
+ requests                 | group_id             | bigint                      |      | YES         | 
+ stations                 | code                 | character varying           |   16 | NO          | 
+ stations                 | name                 | character varying           |  100 | NO          | 
+ stations                 | line                 | character varying           |   50 | NO          | 
+ stations                 | lat                  | numeric                     |      | NO          | 
+ stations                 | lng                  | numeric                     |      | NO          | 
+ users                    | id                   | bigint                      |      | NO          | nextval('users_id_seq'::regclass)
+ users                    | nickname             | character varying           |   50 | NO          | 
+ users                    | preference_text      | character varying           |  200 | NO          | 
+ users                    | created_at           | timestamp with time zone    |      | NO          | now()
+ users                    | updated_at           | timestamp with time zone    |      | NO          | now()
+ users                    | kakao_user_id        | bigint                      |      | YES         | 
+(93 rows)
+
+
+=== INDEXES (public) ===
+        table_name        |          index_name           |                                                           index_def                                                            
+--------------------------+-------------------------------+--------------------------------------------------------------------------------------------------------------------------------
+ flyway_schema_history    | flyway_schema_history_pk      | CREATE UNIQUE INDEX flyway_schema_history_pk ON public.flyway_schema_history USING btree (installed_rank)
+ flyway_schema_history    | flyway_schema_history_s_idx   | CREATE INDEX flyway_schema_history_s_idx ON public.flyway_schema_history USING btree (success)
+ group_members            | group_members_pkey            | CREATE UNIQUE INDEX group_members_pkey ON public.group_members USING btree (group_id, user_id)
+ group_members            | idx_gm_group_status           | CREATE INDEX idx_gm_group_status ON public.group_members USING btree (group_id, status)
+ group_members            | idx_gm_user                   | CREATE INDEX idx_gm_user ON public.group_members USING btree (user_id)
+ group_visits             | group_visits_pkey             | CREATE UNIQUE INDEX group_visits_pkey ON public.group_visits USING btree (group_id, user_id)
+ groups                   | groups_pkey                   | CREATE UNIQUE INDEX groups_pkey ON public.groups USING btree (id)
+ groups                   | groups_slug_key               | CREATE UNIQUE INDEX groups_slug_key ON public.groups USING btree (slug)
+ groups                   | idx_groups_owner_user_id      | CREATE INDEX idx_groups_owner_user_id ON public.groups USING btree (owner_user_id)
+ place_mock               | place_mock_pkey               | CREATE UNIQUE INDEX place_mock_pkey ON public.place_mock USING btree (external_id)
+ place_summaries          | place_summaries_pkey          | CREATE UNIQUE INDEX place_summaries_pkey ON public.place_summaries USING btree (place_id)
+ places                   | places_pkey                   | CREATE UNIQUE INDEX places_pkey ON public.places USING btree (id)
+ places                   | uq_places_external_id         | CREATE UNIQUE INDEX uq_places_external_id ON public.places USING btree (external_id)
+ places                   | uq_places_kakao_id            | CREATE UNIQUE INDEX uq_places_kakao_id ON public.places USING btree (id_old)
+ places                   | ux_places_external_id         | CREATE UNIQUE INDEX ux_places_external_id ON public.places USING btree (external_id)
+ recommendation_notes     | idx_notes_guest_id_created_at | CREATE INDEX idx_notes_guest_id_created_at ON public.recommendation_notes USING btree (guest_id, created_at)
+ recommendation_notes     | idx_notes_rpa                 | CREATE INDEX idx_notes_rpa ON public.recommendation_notes USING btree (rpa_id)
+ recommendation_notes     | recommendation_notes_pkey     | CREATE UNIQUE INDEX recommendation_notes_pkey ON public.recommendation_notes USING btree (id)
+ recommendation_notes     | uq_notes_agg_guest_minute     | CREATE UNIQUE INDEX uq_notes_agg_guest_minute ON public.recommendation_notes USING btree (rpa_id, guest_id, created_at_minute)
+ request_place_aggregates | idx_rpa_place                 | CREATE INDEX idx_rpa_place ON public.request_place_aggregates USING btree (place_id)
+ request_place_aggregates | idx_rpa_request               | CREATE INDEX idx_rpa_request ON public.request_place_aggregates USING btree (request_id)
+ request_place_aggregates | idx_rpa_request_id            | CREATE INDEX idx_rpa_request_id ON public.request_place_aggregates USING btree (request_id)
+ request_place_aggregates | request_place_aggregates_pkey | CREATE UNIQUE INDEX request_place_aggregates_pkey ON public.request_place_aggregates USING btree (id)
+ request_place_aggregates | ux_req_place                  | CREATE UNIQUE INDEX ux_req_place ON public.request_place_aggregates USING btree (request_id, place_id)
+ requests                 | idx_requests_group_id         | CREATE INDEX idx_requests_group_id ON public.requests USING btree (group_id)
+ requests                 | idx_requests_owner_created    | CREATE INDEX idx_requests_owner_created ON public.requests USING btree (owner_user_id, created_at DESC)
+ requests                 | idx_requests_owner_user_id    | CREATE INDEX idx_requests_owner_user_id ON public.requests USING btree (owner_user_id)
+ requests                 | idx_requests_station          | CREATE INDEX idx_requests_station ON public.requests USING btree (station_code)
+ requests                 | requests_pkey                 | CREATE UNIQUE INDEX requests_pkey ON public.requests USING btree (id)
+ requests                 | requests_slug_key             | CREATE UNIQUE INDEX requests_slug_key ON public.requests USING btree (slug)
+ requests                 | uq_requests_slug              | CREATE UNIQUE INDEX uq_requests_slug ON public.requests USING btree (slug)
+ requests                 | ux_requests_slug              | CREATE UNIQUE INDEX ux_requests_slug ON public.requests USING btree (slug)
+ stations                 | idx_stations_name             | CREATE INDEX idx_stations_name ON public.stations USING btree (name)
+ stations                 | stations_pkey                 | CREATE UNIQUE INDEX stations_pkey ON public.stations USING btree (code)
+ stations                 | ux_stations_name_line         | CREATE UNIQUE INDEX ux_stations_name_line ON public.stations USING btree (name, line)
+ users                    | idx_users_nickname            | CREATE INDEX idx_users_nickname ON public.users USING btree (nickname)
+ users                    | users_pkey                    | CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)
+ users                    | ux_users_kakao_id             | CREATE UNIQUE INDEX ux_users_kakao_id ON public.users USING btree (kakao_user_id) WHERE (kakao_user_id IS NOT NULL)
+(38 rows)
+
+
+=== CONSTRAINTS (PK/FK/UNIQUE/CHECK) ===
+        table_name        |             constraint_name              | type |                                                  definition                                                   
+--------------------------+------------------------------------------+------+---------------------------------------------------------------------------------------------------------------
+ flyway_schema_history    | flyway_schema_history_pk                 | p    | PRIMARY KEY (installed_rank)
+ group_members            | ck_gm_role                               | c    | CHECK (((role)::text = ANY ((ARRAY['owner'::character varying, 'member'::character varying])::text[])))
+ group_members            | ck_gm_status                             | c    | CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying])::text[])))
+ group_members            | fk_gm_group                              | f    | FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+ group_members            | fk_gm_user                               | f    | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+ group_members            | group_members_pkey                       | p    | PRIMARY KEY (group_id, user_id)
+ group_visits             | fk_gv_group                              | f    | FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+ group_visits             | fk_gv_user                               | f    | FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+ group_visits             | group_visits_pkey                        | p    | PRIMARY KEY (group_id, user_id)
+ groups                   | fk_groups_owner_user                     | f    | FOREIGN KEY (owner_user_id) REFERENCES users(id) ON DELETE CASCADE
+ groups                   | groups_pkey                              | p    | PRIMARY KEY (id)
+ groups                   | groups_slug_key                          | u    | UNIQUE (slug)
+ place_mock               | fk_place_mock_place                      | f    | FOREIGN KEY (external_id) REFERENCES places(external_id) ON DELETE CASCADE
+ place_mock               | place_mock_external_id_fkey              | f    | FOREIGN KEY (external_id) REFERENCES places(external_id) ON DELETE CASCADE
+ place_mock               | place_mock_pkey                          | p    | PRIMARY KEY (external_id)
+ place_summaries          | fk_place_summaries_place                 | f    | FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
+ place_summaries          | place_summaries_pkey                     | p    | PRIMARY KEY (place_id)
+ places                   | places_pkey                              | p    | PRIMARY KEY (id)
+ places                   | uq_places_external_id                    | u    | UNIQUE (external_id)
+ places                   | ux_places_external_id                    | u    | UNIQUE (external_id)
+ recommendation_notes     | chk_notes_tags_valid                     | c    | CHECK (is_valid_note_tags(tags))
+ recommendation_notes     | recommendation_notes_pkey                | p    | PRIMARY KEY (id)
+ recommendation_notes     | recommendation_notes_rpa_id_fkey         | f    | FOREIGN KEY (rpa_id) REFERENCES request_place_aggregates(id) ON DELETE CASCADE
+ request_place_aggregates | request_place_aggregates_pkey            | p    | PRIMARY KEY (id)
+ request_place_aggregates | request_place_aggregates_place_id_fkey   | f    | FOREIGN KEY (place_id) REFERENCES places(id) ON DELETE CASCADE
+ request_place_aggregates | request_place_aggregates_request_id_fkey | f    | FOREIGN KEY (request_id) REFERENCES requests(slug) ON DELETE CASCADE
+ requests                 | requests_group_id_fkey                   | f    | FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+ requests                 | requests_owner_user_id_fkey              | f    | FOREIGN KEY (owner_user_id) REFERENCES users(id)
+ requests                 | requests_pkey                            | p    | PRIMARY KEY (id)
+ requests                 | requests_slug_key                        | u    | UNIQUE (slug)
+ requests                 | requests_station_code_fkey               | f    | FOREIGN KEY (station_code) REFERENCES stations(code)
+ requests                 | uq_requests_slug                         | u    | UNIQUE (slug)
+ stations                 | stations_pkey                            | p    | PRIMARY KEY (code)
+ users                    | users_pkey                               | p    | PRIMARY KEY (id)
+(34 rows)
+
+
+=== SEQUENCES (public) ===
+ sequence_schema |          sequence_name          
+-----------------+---------------------------------
+ public          | groups_id_seq
+ public          | places_id_seq
+ public          | recommendation_notes_id_seq
+ public          | request_place_aggregates_id_seq
+ public          | requests_id_seq
+ public          | users_id_seq
+(6 rows)
+
+
+=== TRIGGERS (public) ===
+      table_name      |            trigger_name             | action_timing | event_manipulation |                  action_statement                  
+----------------------+-------------------------------------+---------------+--------------------+----------------------------------------------------
+ places               | trg_places_fill_id_old              | BEFORE        | INSERT             | EXECUTE FUNCTION trg_fill_id_old()
+ recommendation_notes | trg_recommendation_notes_set_minute | BEFORE        | INSERT             | EXECUTE FUNCTION recommendation_notes_set_minute()
+ recommendation_notes | trg_recommendation_notes_set_minute | BEFORE        | UPDATE             | EXECUTE FUNCTION recommendation_notes_set_minute()
+(3 rows)
+
+
+=== VIEWS (public) ===
+ view_name 
+-----------
+(0 rows)
+
+
+=== FUNCTIONS/PROCS (public) ===
+              name               | returns |     args     
+---------------------------------+---------+--------------
+ is_valid_note_tags              | boolean | p_tags jsonb
+ recommendation_notes_set_minute | trigger | 
+ trg_fill_id_old                 | trigger | 
+(3 rows)
+
+
+=== TABLE SIZE & ROW COUNT(estimate) ===
+
+=== FLYWAY HISTORY (있으면) ===
+ installed_rank | version |               description               | type |                      script                      | installed_by | success |        installed_on        
+----------------+---------+-----------------------------------------+------+--------------------------------------------------+--------------+---------+----------------------------
+              1 | 1       | init                                    | SQL  | V1__init.sql                                     | pin4u        | t       | 2025-08-21 19:22:12.619053
+              2 | 2       |                                         | SQL  | V2__.sql                                         | pin4u        | t       | 2025-08-21 19:22:12.670524
+              3 | 3       | align schema and fields                 | SQL  | V3__align_schema_and_fields.sql                  | pin4u        | t       | 2025-08-21 19:22:12.694449
+              4 | 4       | create requests                         | SQL  | V4__create_requests.sql                          | pin4u        | t       | 2025-08-21 19:22:12.720872
+              5 | 5       | add nickname and recommend count        | SQL  | V5__add_nickname_and_recommend_count.sql         | pin4u        | t       | 2025-08-21 19:22:12.725397
+              6 | 6       | widen requests slug to 64               | SQL  | V6__widen_requests_slug_to_64.sql                | pin4u        | t       | 2025-08-21 19:22:12.730284
+              7 | 7       | ensure places y and seed place mock     | SQL  | V7__ensure_places_y_and_seed_place_mock.sql      | pin4u        | t       | 2025-08-21 19:22:12.733614
+              8 | 8       | drop external source from places        | SQL  | V8__drop_external_source_from_places.sql         | pin4u        | t       | 2025-08-21 19:22:12.740605
+              9 | 9       | fix places id identity                  | SQL  | V9__fix_places_id_identity.sql                   | pin4u        | t       | 2025-08-21 21:34:23.423223
+             10 | 10      | places id identity and backfill         | SQL  | V10__places_id_identity_and_backfill.sql         | pin4u        | t       | 2025-08-21 21:34:23.48935
+             11 |         | seed stations                           | SQL  | R__seed_stations.sql                             | pin4u        | t       | 2025-08-21 21:34:23.500249
+             12 | 11      | places autofill id old from external id | SQL  | V11__places_autofill_id_old_from_external_id.sql | pin4u        | t       | 2025-08-21 21:50:16.162742
+             13 | 12      | rpa slug fk and notes shape             | SQL  | V12__rpa_slug_fk_and_notes_shape.sql             | pin4u        | t       | 2025-08-22 02:22:53.144606
+             14 |         | seed fixed user                         | SQL  | R__seed_fixed_user.sql                           | pin4u        | t       | 2025-08-23 23:50:09.108494
+             15 |         | seed fixed user                         | SQL  | R__seed_fixed_user.sql                           | pin4u        | t       | 2025-08-24 00:15:59.404679
+             16 | 12.9    | pre v13 cleanup                         | SQL  | V12_9__pre_v13_cleanup.sql                       | pin4u        | t       | 2025-08-25 09:44:04.48345
+             17 | 13      | pin4u final                             | SQL  | V13__pin4u_final.sql                             | pin4u        | t       | 2025-08-25 09:44:04.52614
+             18 | 14      | post v13 fixes                          | SQL  | V14__post_v13_fixes.sql                          | pin4u        | t       | 2025-08-25 09:44:04.629332
+             19 | 15      | rpa request id to varchar               | SQL  | V15__rpa_request_id_to_varchar.sql               | pin4u        | t       | 2025-08-25 17:16:30.488461
+             20 | 16      | backfill place id and harden rpa        | SQL  | V16__backfill_place_id_and_harden_rpa.sql        | pin4u        | t       | 2025-09-14 18:17:11.587497
+             21 | 17      | users kakao and groups and columns      | SQL  | V17__users_kakao_and_groups_and_columns.sql      | pin4u        | t       | 2025-09-14 22:26:16.649822
+(21 rows)
+
+
+=== SAMPLE DATA CHECKS ===
+ stations 
+----------
+      773
+(1 row)
+
+ places 
+--------
+     19
+(1 row)
+
+ requests 
+----------
+       28
+(1 row)
+
+ rpa 
+-----
+  11
+(1 row)
+
+ notes 
+-------
+    19
+(1 row)
+

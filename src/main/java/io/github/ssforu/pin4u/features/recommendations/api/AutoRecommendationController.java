@@ -6,6 +6,11 @@ import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.RequestDet
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+// ✅ Swagger 문서용 어노테이션 import
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "Recommendations")
 @RestController
 @RequestMapping("/api/recommendations")
 @RequiredArgsConstructor
@@ -20,6 +25,7 @@ public class AutoRecommendationController {
      * - q: 있으면 그대로, 없으면 request_message에서 AI로 키워드(최대 2) 추출
      * - 응답: #7과 동일 스키마(RequestDetailResponse)
      */
+    @Operation(summary = "자동 장소추천", description = "요청 슬러그 기준으로 자동 추천을 수행합니다.")
     @GetMapping("/auto")
     public ApiResponse<RequestDetailResponse> auto(
             @RequestParam("slug") String slug,

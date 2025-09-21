@@ -1,0 +1,59 @@
+# src/main/resources/application-prod.yml
+spring:
+  datasource:
+    # docker-compose 기준: postgres 서비스명 사용 예시. (RDS 쓸 땐 해당 호스트로 바꾸면 됨)
+    url: jdbc:postgresql://postgres:5432/pin4u_be
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none          # 운영에선 스키마 변경 금지 (스키마 관리는 Flyway만)
+    show-sql: false
+
+  flyway:
+    enabled: true             # 운영은 Flyway 활성화
+    baseline-on-migrate: true
+
+server:
+  # 프록시/ALB 뒤에서 X-Forwarded-* 처리 (HTTPS 판별 정확)
+  forward-headers-strategy: framework
+
+app:
+  # === S3(직접 업로드 + public URL 조회) ===
+  s3:
+    bucket: ss4u-pin4u-bucket
+    region: ap-northeast-2
+    public-prefix: public/
+    endpoint: "https://ss4u-pin4u-bucket.s3.ap-northeast-2.amazonaws.com"
+
+  # 쿠키 설정: 운영은 교차출처 쿠키 허용이 일반적
+  cookies:
+    crossSite: true                 # SameSite=None; Secure
+    domain: ".ss4u-pin4u.store"     # 필요 없으면 빈 문자열로 두면 Host-Only 쿠키
+
+  # 기능 플래그/외부 API: 값은 전부 환경변수에서 주입
+  kakao:
+    enabled: ${APP_KAKAO_ENABLED:true}
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+    api:
+      base-url: https://dapi.kakao.com
+
+  ai:
+    enabled: ${APP_AI_ENABLED:true}
+    openai:
+      base_url: https://api.openai.com/v1
+      model: ${OPENAI_MODEL:gpt-4o-mini}
+      timeout_ms: 8000
+
+  # 운영 기본: 시드/OG/레이트리밋은 상황에 맞게
+  seed:
+    enabled: false
+  og:
+    image-enabled: false
+  ratelimit:
+    enabled: false
+
+# springdoc / swagger는 application.yml에 이미 정의돼 있으므로
+# 여기선 별도 오버라이드 없이 그대로 상속해서 사용.

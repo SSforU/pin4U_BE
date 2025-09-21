@@ -1,4 +1,3 @@
-// src/main/java/io/github/ssforu/pin4u/features/recommendations/domain/RecommendationNote.java
 package io.github.ssforu.pin4u.features.recommendations.domain;
 
 import jakarta.persistence.*;
@@ -10,17 +9,13 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "recommendation_notes"
-//  ※ 동시성까지 잡으려면 DB에 UNIQUE(rpa_id, guest_id) 권장 (운영 DB 확인 필요)
-// , uniqueConstraints = @UniqueConstraint(name = "uq_note_rpa_guest", columnNames = {"rpa_id","guest_id"})
-)
+@Table(name = "recommendation_notes")
 public class RecommendationNote {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // request_place_aggregates.id
     @Column(name = "rpa_id", nullable = false)
     private Long rpaId;
 
@@ -33,7 +28,9 @@ public class RecommendationNote {
     @Column(name = "image_url", length = 300)
     private String imageUrl;
 
-    // JSONB ←→ List<String>
+    @Column(name = "image_is_public", nullable = false)
+    private boolean imageIsPublic = true;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tags", columnDefinition = "jsonb")
     private List<String> tags;
@@ -45,7 +42,7 @@ public class RecommendationNote {
     private OffsetDateTime createdAt;
 
     @Column(name = "created_at_minute")
-    private OffsetDateTime createdAtMinute; // DB 트리거가 세팅
+    private OffsetDateTime createdAtMinute;
 
     protected RecommendationNote() {}
 
@@ -53,6 +50,7 @@ public class RecommendationNote {
                               String nickname,
                               String recommendMessage,
                               String imageUrl,
+                              boolean imageIsPublic,
                               List<String> tags,
                               UUID guestId,
                               OffsetDateTime createdAt) {
@@ -60,12 +58,12 @@ public class RecommendationNote {
         this.nickname = nickname;
         this.recommendMessage = recommendMessage;
         this.imageUrl = imageUrl;
+        this.imageIsPublic = imageIsPublic;
         this.tags = tags;
         this.guestId = guestId;
         this.createdAt = createdAt;
     }
 
-    /** created_at 누락 시 자동 세팅 */
     @PrePersist
     protected void onCreate() {
         if (this.createdAt == null) {
@@ -78,6 +76,8 @@ public class RecommendationNote {
     public String getNickname() { return nickname; }
     public String getRecommendMessage() { return recommendMessage; }
     public String getImageUrl() { return imageUrl; }
+    public boolean isImageIsPublic() { return imageIsPublic; }
+    public void setImageIsPublic(boolean imageIsPublic) { this.imageIsPublic = imageIsPublic; }
     public List<String> getTags() { return tags; }
     public UUID getGuestId() { return guestId; }
     public OffsetDateTime getCreatedAt() { return createdAt; }

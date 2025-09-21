@@ -11,6 +11,7 @@ import reactor.core.publisher.Mono;
 public class KakaoOAuthClient {
     private final WebClient http = WebClient.builder()
             .baseUrl("https://kapi.kakao.com")       // ★ 사용자 API는 kapi
+            .defaultHeader(HttpHeaders.USER_AGENT, "pin4u")
             .build();
 
     @JsonIgnoreProperties(ignoreUnknown = true)

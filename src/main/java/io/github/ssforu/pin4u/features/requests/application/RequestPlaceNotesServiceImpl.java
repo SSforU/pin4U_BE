@@ -41,7 +41,7 @@ public class RequestPlaceNotesServiceImpl implements RequestPlaceNotesService {
                     r.getRecommend_message(),
                     r.getImage_url(),
                     tags,
-                    r.getCreated_at()    // Instant 그대로
+                    r.getCreated_at()
             );
         }).toList();
 

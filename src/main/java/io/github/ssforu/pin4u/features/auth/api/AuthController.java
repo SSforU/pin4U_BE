@@ -14,8 +14,13 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Duration;
 import java.util.Optional;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+
+@Tag(name = "Auth")
 @RestController
-@RequestMapping("/api/auth") // ✅ API 명세와 통일: /api/auth/**
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
@@ -32,7 +37,10 @@ public class AuthController {
         this.users = users;
     }
 
-    /** 프론트가 준 access_token 검증 → upsert → uid 쿠키 세팅 */
+    @Operation(
+            summary = "카카오 로그인",
+            description = "프론트에서 전달한 Kakao access_token을 검증하고 uid 쿠키를 발급합니다."
+    )
     @PostMapping("/kakao/login")
     public ResponseEntity<AuthDtos.LoginResponse> login(@RequestBody AuthDtos.KakaoLoginRequest body,
                                                         HttpServletResponse res) {
@@ -42,13 +50,12 @@ public class AuthController {
 
         var out = authService.loginWithKakaoToken(body.accessToken());
 
-        // ★ 데모용 초간단 식별 쿠키: uid = users.id
         var builder = ResponseCookie.from("uid", String.valueOf(out.user().id()))
                 .httpOnly(true)
                 .path("/")
                 .maxAge(Duration.ofDays(30))
                 .sameSite(crossSite ? "None" : "Lax")
-                .secure(crossSite); // cross-site면 Secure 필수
+                .secure(crossSite);
 
         if (cookieDomain != null && !cookieDomain.isBlank()) {
             builder = builder.domain(cookieDomain.trim());
@@ -60,7 +67,11 @@ public class AuthController {
         return ResponseEntity.ok(out);
     }
 
-    /** 현재 로그인 사용자 조회 (쿠키 uid 기준) */
+    @Operation(
+            summary = "현재 로그인 사용자 조회",
+            description = "uid 쿠키 기준으로 로그인 사용자를 반환합니다. 없으면 204.",
+            security = @SecurityRequirement(name = "uidCookie")
+    )
     @GetMapping("/me")
     public ResponseEntity<AuthDtos.LoginUser> me(@CookieValue(name = "uid", required = false) String uid) {
         if (uid == null || uid.isBlank()) return ResponseEntity.noContent().build();
@@ -75,7 +86,7 @@ public class AuthController {
         }
     }
 
-    /** 로그아웃: uid 쿠키 제거 */
+    @Operation(summary = "로그아웃", description = "uid 쿠키를 만료시킵니다.")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse res) {
         var builder = ResponseCookie.from("uid", "")

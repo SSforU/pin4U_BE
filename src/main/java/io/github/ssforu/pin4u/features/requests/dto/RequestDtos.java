@@ -12,30 +12,26 @@ public final class RequestDtos {
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record CreateRequest(
-            String ownerNickname,
             String stationCode,
-            String requestMessage
+            String requestMessage,
+            String groupSlug
     ) {}
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record CreatedRequestDTO(
             String slug,
-            String ownerNickname,
             String stationCode,
             String requestMessage,
             OffsetDateTime createdAt
     ) {}
 
-    // ✅ 리스트 아이템: 스펙 확정 버전 (snake_case)
-    //    - station_code 제외
-    //    - station_line 다음에 road_address_name 포함(현재 null)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record ListItem(
             String slug,
-            String stationName,      // “숭실대입구”
-            String stationLine,      // “7호선”
-            String roadAddressName,  // 현재는 null(또는 생략)
+            String stationName,
+            String stationLine,
+            String roadAddressName,
             int    recommendCount,
             OffsetDateTime createdAt
     ) {}
