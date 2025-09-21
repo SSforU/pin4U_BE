@@ -12,7 +12,7 @@ public final class RequestPlaceNotesDtos {
             String recommendMessage,
             String imageUrl,
             List<String> tags,
-            Instant createdAt   // ★ Instant -> JSON "…Z"
+            Instant createdAt
     ) {}
 
     public record Response(

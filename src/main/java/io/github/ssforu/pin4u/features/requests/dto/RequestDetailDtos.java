@@ -2,6 +2,7 @@ package io.github.ssforu.pin4u.features.requests.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -20,7 +21,7 @@ public final class RequestDetailDtos {
 
     public record Ai(
             String summaryText,
-            Object evidence,      // JSONB → Map/JsonNode (전역 ObjectMapper 설정에 따름)
+            String evidence,
             OffsetDateTime updatedAt
     ) {}
 
@@ -40,13 +41,13 @@ public final class RequestDetailDtos {
             String categoryName,
             String addressName,
             String roadAddressName,
-            String x,  // Kakao parity: 문자열
-            String y,  // Kakao parity: 문자열
+            String x,
+            String y,
             Integer distanceM,
             String placeUrl,
             @JsonInclude(JsonInclude.Include.NON_NULL) Mock mock,
             @JsonInclude(JsonInclude.Include.NON_NULL) Ai ai,
-            @JsonProperty("recommended_count") Integer recommendedCount // ★ 명시적으로 recommended_count로 직렬화
+            @JsonProperty("recommended_count") Integer recommendedCount
     ) {}
 
     public record RequestDetailResponse(

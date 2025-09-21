@@ -8,10 +8,6 @@ import org.springframework.data.repository.query.Param;
 import java.time.OffsetDateTime;
 import java.util.List;
 
-/**
- * #7 요청 상세(지도 핀 + 카드뉴스) 읽기 전용 Native 쿼리.
- * 정렬: recommended_count DESC → distance_m ASC
- */
 public interface RequestDetailQueryRepository extends Repository<Place, Long> {
 
     interface Row {
@@ -28,13 +24,11 @@ public interface RequestDetailQueryRepository extends Repository<Place, Long> {
         Integer getDistance_m();
         String getPlace_url();
         Integer getRecommended_count();
-
         Double getMock_rating();
         Integer getMock_rating_count();
         String getMock_image_urls_json();
         String getMock_opening_hours_json();
         String getMock_review_snippets_json();
-
         String getAi_summary_text();
         String getAi_evidence_json();
         OffsetDateTime getAi_updated_at();
@@ -73,14 +67,12 @@ public interface RequestDetailQueryRepository extends Repository<Place, Long> {
         NULL::timestamptz                                       AS ai_updated_at
     FROM requests r
     JOIN stations s               ON s.code = r.station_code
-    JOIN request_place_aggregates rpa ON rpa.request_id = r.slug        
-    JOIN places p                 ON p.external_id = rpa.place_external_id
+    JOIN request_place_aggregates rpa ON rpa.request_id = r.slug
+    JOIN places p                 ON p.id = rpa.place_id
     LEFT JOIN place_mock pm       ON pm.external_id = p.external_id
     WHERE r.slug = :slug
     ORDER BY rpa.recommended_count DESC, distance_m ASC
     LIMIT :limit
     """, nativeQuery = true)
     List<Row> findItemsBySlug(@Param("slug") String slug, @Param("limit") int limit);
-
-
 }

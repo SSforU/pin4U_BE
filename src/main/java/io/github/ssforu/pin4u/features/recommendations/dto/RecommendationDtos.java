@@ -10,7 +10,6 @@ import java.util.*;
 public final class RecommendationDtos {
     private RecommendationDtos() {}
 
-    // 요청 바디
     public static class SubmitRequest {
         private List<SubmitItem> items;
         public SubmitRequest() {}
@@ -24,25 +23,30 @@ public final class RecommendationDtos {
         @JsonProperty("recommender_nickname")  @JsonAlias("recommenderNickname")   private String recommenderNickname;
         @JsonProperty("recommend_message")     @JsonAlias("recommendMessage")      private String recommendMessage;
         @JsonProperty("image_url")             @JsonAlias("imageUrl")              private String imageUrl;
+
+        // 기본값: 공개(true)
+        @JsonProperty("image_is_public")       @JsonAlias("imageIsPublic")         private Boolean imageIsPublic = Boolean.TRUE;
+
         @JsonProperty("tags")                                                      private List<String> tags;
         @JsonProperty("guest_id")              @JsonAlias("guestId")               private String guestId;
 
         public SubmitItem() {}
         public SubmitItem(String externalId, String recommenderNickname, String recommendMessage,
-                          String imageUrl, List<String> tags, String guestId) {
+                          String imageUrl, Boolean imageIsPublic, List<String> tags, String guestId) {
             this.externalId = externalId; this.recommenderNickname = recommenderNickname;
             this.recommendMessage = recommendMessage; this.imageUrl = imageUrl;
+            this.imageIsPublic = imageIsPublic;
             this.tags = tags; this.guestId = guestId;
         }
         public String getExternalId() { return externalId; }
         public String getRecommenderNickname() { return recommenderNickname; }
         public String getRecommendMessage() { return recommendMessage; }
         public String getImageUrl() { return imageUrl; }
+        public Boolean getImageIsPublic() { return imageIsPublic; }
         public List<String> getTags() { return tags; }
         public String getGuestId() { return guestId; }
     }
 
-    // 응답 바디(스네이크 케이스 보장)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class SubmitResponse {
         private List<SavedItem> saved = new ArrayList<>();
