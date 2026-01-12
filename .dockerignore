@@ -1,0 +1,16 @@
+.git
+.gradle
+**/*.iml
+.idea
+.DS_Store
+out
+tmp
+*.log
+
+# 빌드 산출물 전체 제외
+build/**
+
+# …하지만 이미지에 넣을 JAR은 포함
+!build/libs
+!build/libs/*.jar
+

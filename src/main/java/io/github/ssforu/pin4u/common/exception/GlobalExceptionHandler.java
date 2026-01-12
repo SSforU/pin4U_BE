@@ -1,3 +1,4 @@
+// src/main/java/io/github/ssforu/pin4u/common/exception/GlobalExceptionHandler.java
 package io.github.ssforu.pin4u.common.exception;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -49,7 +51,6 @@ public class GlobalExceptionHandler {
     // 404 - 리소스/핸들러 없음 (정적/동적 모두 커버)
     @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
     public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception ex, HttpServletRequest req) {
-        // noisy 로그 방지를 위해 debug 수준만 남김
         if (log.isDebugEnabled()) {
             log.debug("[NOT_FOUND] {} {}", req.getMethod(), req.getRequestURI(), ex);
         }
@@ -84,19 +85,65 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(code, ex.getReason() != null ? ex.getReason() : "error", null));
     }
 
+    // ★ 카카오/외부 호출 실패(WebClientResponseException) 전용 매핑
+    @ExceptionHandler(WebClientResponseException.class)
+    public ResponseEntity<ApiResponse<Void>> handleWebClient(WebClientResponseException ex, HttpServletRequest req) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) status = HttpStatus.BAD_GATEWAY;
+
+        String code;
+        if (status.is5xxServerError()) {
+            code = "UPSTREAM_ERROR";        // 5xx → 502 등
+        } else if (status == HttpStatus.UNAUTHORIZED) {
+            code = "UNAUTHORIZED";          // 401
+        } else {
+            code = "BAD_REQUEST";           // 기타 4xx
+        }
+
+        if (status.is5xxServerError()) {
+            log.warn("[UPSTREAM] {} {} - {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
+        } else {
+            if (log.isDebugEnabled()) {
+                log.debug("[WEBCLIENT] {} {} - {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
+            }
+        }
+        return ResponseEntity.status(status)
+                .body(ApiResponse.error(code, ex.getMessage(), null));
+    }
+
+    // IllegalArgumentException → 메시지 기반 상태코드 분기(유지 + 보강)
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException e) {
+        String msg = e.getMessage();
+        HttpStatus status;
+        String code;
+
+        // ★ 의미 있는 메시지에 상태코드 부여
+        if ("invalid_kakao_token".equals(msg)) {
+            status = HttpStatus.UNAUTHORIZED; // 401
+            code = "UNAUTHORIZED";
+        } else if ("kakao_4xx".equals(msg)
+                || "access_token_required".equals(msg)
+                || "nickname_required".equals(msg)
+                || "nickname_length_2_to_16".equals(msg)) {
+            status = HttpStatus.BAD_REQUEST;  // 400
+            code = "BAD_REQUEST";
+        } else {
+            status = HttpStatus.BAD_REQUEST;
+            code = "BAD_REQUEST";
+        }
+
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("result", "error");
         body.put("data", null);
         Map<String, Object> err = new LinkedHashMap<>();
-        err.put("code", "BAD_REQUEST");
-        err.put("message", e.getMessage());
+        err.put("code", code);
+        err.put("message", msg);
         err.put("details", null);
         body.put("error", err);
         body.put("timestamp", java.time.OffsetDateTime.now().toString());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return ResponseEntity.status(status).body(body);
     }
 
     // 그 외 예기치 못한 예외만 500

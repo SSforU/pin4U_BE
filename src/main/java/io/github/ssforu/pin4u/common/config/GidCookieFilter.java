@@ -56,6 +56,10 @@ public class GidCookieFilter implements Filter {
             if (cookieDomain != null && !cookieDomain.isBlank()) {
                 sb.append("; Domain=").append(cookieDomain.trim());
             }
+            // ★ 교차 사이트면 CHIPS(Partitioned) 부여
+            if (crossSite) {
+                sb.append("; Partitioned");
+            }
 
             w.addHeader(HttpHeaders.SET_COOKIE, sb.toString());
         }

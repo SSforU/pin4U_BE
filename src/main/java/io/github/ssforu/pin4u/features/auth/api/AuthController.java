@@ -57,13 +57,16 @@ public class AuthController {
                 .sameSite(crossSite ? "None" : "Lax")
                 .secure(crossSite);
 
+        // 교차 사이트면 CHIPS(Partitioned) 부여
+        if (crossSite) {
+            builder = builder.partitioned(true);
+        }
+
         if (cookieDomain != null && !cookieDomain.isBlank()) {
             builder = builder.domain(cookieDomain.trim());
         }
 
-        var cookie = builder.build();
-        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
+        res.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
         return ResponseEntity.ok(out);
     }
 
@@ -96,13 +99,16 @@ public class AuthController {
                 .sameSite(crossSite ? "None" : "Lax")
                 .secure(crossSite);
 
+        // 교차 사이트면 CHIPS(Partitioned) 부여
+        if (crossSite) {
+            builder = builder.partitioned(true);
+        }
+
         if (cookieDomain != null && !cookieDomain.isBlank()) {
             builder = builder.domain(cookieDomain.trim());
         }
 
-        var cookie = builder.build();
-        res.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
+        res.addHeader(HttpHeaders.SET_COOKIE, builder.build().toString());
         return ResponseEntity.noContent().build();
     }
 }

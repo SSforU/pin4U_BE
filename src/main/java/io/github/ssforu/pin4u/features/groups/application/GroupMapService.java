@@ -5,19 +5,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.ssforu.pin4u.features.groups.domain.Group;
 import io.github.ssforu.pin4u.features.groups.domain.GroupMember;
 import io.github.ssforu.pin4u.features.groups.domain.GroupMemberId;
-import io.github.ssforu.pin4u.features.groups.dto.GroupMapDtos;
 import io.github.ssforu.pin4u.features.groups.infra.GroupMapQueryRepository;
-import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
 import io.github.ssforu.pin4u.features.groups.infra.GroupMemberRepository;
+import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
+import io.github.ssforu.pin4u.features.places.application.MockAllocator;
+import io.github.ssforu.pin4u.features.places.domain.PlaceMock;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,8 +32,10 @@ public class GroupMapService {
     private final StationRepository stations;
     private final GroupMapQueryRepository query;
     private final ObjectMapper om;
+    private final MockAllocator mockAllocator;
 
-    public GroupMapDtos.Response getGroupMap(String groupSlug, Long me, Integer limit) {
+    @Transactional // mock 생성 필요시 write 허용
+    public RequestDetailDtos.RequestDetailResponse getGroupMapAsRequestDetail(String groupSlug, Long me, Integer limit) {
         Group g = groups.findBySlug(groupSlug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "group not found"));
 
@@ -40,40 +43,45 @@ public class GroupMapService {
         if (!Objects.equals(g.getOwnerUserId(), me)) {
             var gmId = new GroupMemberId(g.getId(), me);
             var opt = members.findById(gmId);
-            if (opt.isEmpty() || opt.get().getStatus() != GroupMember.Status.approved) {
+            if (opt.isEmpty() || opt.get().getStatus() != GroupMember.Status.APPROVED) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "forbidden");
             }
         }
 
-        // ==== 중심 좌표: "그룹은 단일 역" 전제 ====
-        var groupReqs = requests.findAllByGroupId(g.getId());  // 이미 존재하는 메서드(네가 추가했다고 했던 그 메서드)
+        var groupReqs = requests.findAllByGroupId(g.getId());
+        var groupBrief = new RequestDetailDtos.GroupBrief(g.getId(), g.getSlug(), g.getName(), g.getImageUrl());
+
+        // 그룹 내 요청이 없으면 빈 리스트 반환 (slug는 group 표기)
         if (groupReqs == null || groupReqs.isEmpty()) {
-            // 요청이 아직 없다면 빈 리스트 + center 없음
-            return new GroupMapDtos.Response(
-                    new GroupMapDtos.GroupBrief(g.getId(), g.getSlug(), g.getName(), g.getImageUrl()),
+            return new RequestDetailDtos.RequestDetailResponse(
+                    "group:" + g.getSlug(),
+                    new RequestDetailDtos.Station(null, null, null, null, null),
                     null,
-                    java.util.List.of()
+                    List.of(),
+                    groupBrief
             );
         }
 
-        // 그룹 내 모든 요청이 동일 역이라는 전제: 첫 요청의 역을 기준으로 사용
-        String stationCode = groupReqs.get(0).getStationCode();
-        var st = stations.findByCode(stationCode)
+        // 대표 요청(첫 요청 기준) – 이 요청의 slug를 응답에 실어 프론트가 노트 조회에 사용
+        var first = groupReqs.get(0);
+        var st = stations.findByCode(first.getStationCode())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "station not found for group"));
-        BigDecimal centerLat = st.getLat();
-        BigDecimal centerLng = st.getLng();
 
         int lim = (limit == null || limit <= 0 || limit > 100) ? 50 : limit;
 
-        var rows = query.findItemsByGroupId(g.getId(), centerLat.doubleValue(), centerLng.doubleValue(), lim);
+        var rows = query.findItemsByGroupId(g.getId(), st.getLat().doubleValue(), st.getLng().doubleValue(), lim);
 
-        List<RequestDetailDtos.Item> items = rows.stream().map(r -> {
-            RequestDetailDtos.Mock mock = new RequestDetailDtos.Mock(
-                    r.getMock_rating(),
-                    r.getMock_rating_count(),
-                    parseJsonArray(r.getMock_image_urls_json()),
-                    parseJsonArray(r.getMock_opening_hours_json())
-            );
+        var items = rows.stream().map(r -> {
+            RequestDetailDtos.Mock mock = null;
+            if (r.getMock_rating() != null || r.getMock_rating_count() != null
+                    || r.getMock_image_urls_json() != null || r.getMock_opening_hours_json() != null) {
+                mock = new RequestDetailDtos.Mock(
+                        r.getMock_rating(),
+                        r.getMock_rating_count(),
+                        parseJsonArray(r.getMock_image_urls_json()),
+                        parseJsonArray(r.getMock_opening_hours_json())
+                );
+            }
             return new RequestDetailDtos.Item(
                     r.getExternal_id(),
                     r.getId_stripped(),
@@ -88,15 +96,46 @@ public class GroupMapService {
                     r.getDistance_m(),
                     r.getPlace_url(),
                     mock,
-                    null, // AI 없음(요구사항대로)
+                    null, // AI는 여기서 미포함
                     r.getRecommended_count()
             );
         }).collect(Collectors.toList());
 
-        return new GroupMapDtos.Response(
-                new GroupMapDtos.GroupBrief(g.getId(), g.getSlug(), g.getName(), g.getImageUrl()),
-                new GroupMapDtos.StationCenter(centerLat, centerLng),
-                items
+        // mock 보장: 없는 항목만 생성 후 주입
+        Set<String> need = items.stream()
+                .filter(it -> it.mock() == null)
+                .map(RequestDetailDtos.Item::externalId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!need.isEmpty()) {
+            Map<String, PlaceMock> ensured = mockAllocator.ensureMocks(need);
+            items = items.stream().map(cur -> {
+                if (cur.mock() != null) return cur;
+                PlaceMock pm = ensured.get(cur.externalId());
+                if (pm == null) return cur;
+                var filled = new RequestDetailDtos.Mock(
+                        pm.getRating() == null ? null : pm.getRating().doubleValue(),
+                        pm.getRatingCount(),
+                        parseJsonArray(pm.getImageUrlsJson()),
+                        parseJsonArray(pm.getOpeningHoursJson())
+                );
+                return new RequestDetailDtos.Item(
+                        cur.externalId(), cur.id(), cur.placeName(),
+                        cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
+                        cur.addressName(), cur.roadAddressName(),
+                        cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
+                        filled, cur.ai(), cur.recommendedCount()
+                );
+            }).collect(Collectors.toList());
+        }
+
+        // ✅ 핵심: 응답 slug = 대표 request의 slug (노트/집계 라우팅과 Flyway V15 구조에 정확히 부합)
+        return new RequestDetailDtos.RequestDetailResponse(
+                first.getSlug(),
+                new RequestDetailDtos.Station(st.getCode(), st.getName(), st.getLine(), st.getLat(), st.getLng()),
+                first.getRequestMessage(), // 시연: 첫 요청의 메모를 메모 박스에 노출
+                items,
+                groupBrief
         );
     }
 

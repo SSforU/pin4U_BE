@@ -1,7 +1,12 @@
-FROM eclipse-temurin:17-jre-jammy
+# Dockerfile — 표준 빌드
+FROM --platform=linux/amd64 eclipse-temurin:17-jre-jammy
 
-# 앱 JAR 복사 (빌드 산출물 경로에 맞춰 유지)
-COPY build/libs/*SNAPSHOT.jar /app.jar
+ARG JAR_FILE=build/libs/pin4U_BE-0.0.1-SNAPSHOT.jar
+WORKDIR /app
+COPY ${JAR_FILE} /app/app.jar
+COPY ${JAR_FILE} /app.jar
+
 
 EXPOSE 8080
-ENTRYPOINT ["java","-jar","/app.jar"]
+ENTRYPOINT ["java","-jar","/app/app.jar"]
+

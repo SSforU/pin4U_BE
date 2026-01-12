@@ -1,5 +1,8 @@
 package io.github.ssforu.pin4u.features.home.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -7,14 +10,15 @@ import java.util.Map;
 public final class HomeDtos {
     private HomeDtos() {}
 
-    // ✅ 홈 대시보드 응답: items는 홈 전용 Item으로 교체
     public record DashboardResponse(
+            @JsonInclude(Include.ALWAYS)
             List<Item> items,
-            List<Map<String, Object>> groups, // 1차 버전: 빈 리스트 유지
-            Map<String, Integer> badges       // 예: {"group_owner_pending":0}
+            @JsonInclude(Include.ALWAYS)
+            List<Map<String, Object>> groups,
+            @JsonInclude(Include.ALWAYS)
+            Map<String, Integer> badges
     ) {}
 
-    // ✅ 홈 전용 아이템: request_message 포함
     public record Item(
             String slug,
             String station_name,

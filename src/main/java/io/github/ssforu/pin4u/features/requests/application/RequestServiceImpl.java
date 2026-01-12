@@ -9,6 +9,11 @@ import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.requests.infra.SlugGenerator;
 import io.github.ssforu.pin4u.features.stations.domain.Station;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
+
+// ✅ member 패키지 구조에 맞게 User 사용
+import io.github.ssforu.pin4u.features.member.infra.UserRepository;
+import io.github.ssforu.pin4u.features.member.domain.User;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +32,8 @@ public class RequestServiceImpl implements RequestService {
     private final StationRepository stationRepository;
     private final SlugGenerator slugGenerator;
     private final RequestPlaceAggregateRepository rpaRepository;
-    private final GroupRepository groupRepository; // ⭐ 추가
+    private final GroupRepository groupRepository; // ✅ 그룹 조회 의존성
+    private final UserRepository userRepository;   // ✅ 오너 닉네임 조회 의존성
 
     private static final Map<String, String> LEGACY_ALIAS = Map.of(
             "7-733", "S0701"
@@ -42,13 +48,14 @@ public class RequestServiceImpl implements RequestService {
                               StationRepository stationRepository,
                               SlugGenerator slugGenerator,
                               RequestPlaceAggregateRepository rpaRepository,
-                              GroupRepository groupRepository // ⭐ 추가
-    ) {
+                              GroupRepository groupRepository,
+                              UserRepository userRepository) {        // ✅ 추가
         this.requestRepository = requestRepository;
         this.stationRepository = stationRepository;
         this.slugGenerator = slugGenerator;
         this.rpaRepository = rpaRepository;
-        this.groupRepository = groupRepository; // ⭐ 추가
+        this.groupRepository = groupRepository;
+        this.userRepository = userRepository;                       // ✅ 추가
     }
 
     @Override
@@ -65,12 +72,12 @@ public class RequestServiceImpl implements RequestService {
             Group g = groupRepository.findBySlug(groupSlug.trim())
                     .orElseThrow(() -> new IllegalArgumentException("invalid group_slug"));
 
-            // 그룹 소유자만 생성 가능 (요구사항: 배포/확정은 로그인 사용자 주도)
+            // 오너만 그룹 요청 생성 허용
             if (!g.getOwnerUserId().equals(ownerUserId)) {
                 throw new IllegalArgumentException("only group owner can create group requests");
             }
 
-            // 이미 그룹에 다른 요청들이 있다면, 모두 동일 역이어야 함
+            // 이미 그룹에 요청들이 있다면 모두 동일 역이어야 함
             List<Request> existing = requestRepository.findAllByGroupId(g.getId());
             if (!existing.isEmpty()) {
                 String existingCode = existing.get(0).getStationCode();
@@ -78,7 +85,7 @@ public class RequestServiceImpl implements RequestService {
                     throw new IllegalArgumentException("group must use a single station");
                 }
             }
-            groupId = g.getId();
+            groupId = g.getId();        // ✅ 저장 전에 group_id 세팅
         }
 
         // 3) 저장
@@ -138,7 +145,7 @@ public class RequestServiceImpl implements RequestService {
 
         final List<String> slugs = requests.stream()
                 .map(Request::getSlug)
-                .collect(Collectors.toList());
+                .toList();
 
         final Map<String, Integer> totalMap =
                 slugs.isEmpty() ? Map.of()
@@ -164,9 +171,25 @@ public class RequestServiceImpl implements RequestService {
                             r.getCreatedAt()
                     );
                 })
-                .collect(Collectors.toList());
+                .toList();
     }
 
+    // ✅ 추가: 요청 슬러그로 오너 닉네임 조회 (읽기 전용)
+    @Override
+    @Transactional(readOnly = true)
+    public OwnerBrief getOwnerByRequestSlug(String slug) {
+        var req = requestRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("request not found"));
+        Long uid = req.getOwnerUserId();
+        if (uid == null) throw new IllegalArgumentException("owner not found");
+        String nick = userRepository.findById(uid)
+                .map(User::getNickname)
+                .filter(n -> n != null && !n.isBlank())
+                .orElse("사용자"); // 빈 닉네임 대비 안전 디폴트
+        return new OwnerBrief(uid, nick);
+    }
+
+    // --- 이하 유틸/검증 동일 ---
     private String resolveStationCodeOr400(String raw) {
         if (raw == null || raw.trim().isEmpty()) {
             throw new IllegalArgumentException("station_code is required");
@@ -259,9 +282,6 @@ public class RequestServiceImpl implements RequestService {
         if (opt.isEmpty()) return DeleteResult.NOT_FOUND;
         var req = opt.get();
         if (!req.getOwnerUserId().equals(me)) return DeleteResult.NOT_OWNER;
-
-        // FK: request_place_aggregates.request_id → requests.slug (ON DELETE CASCADE)
-        // FK: recommendation_notes.rpa_id → request_place_aggregates.id (ON DELETE CASCADE)
         requestRepository.delete(req);
         return DeleteResult.OK;
     }

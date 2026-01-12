@@ -17,7 +17,7 @@ public class RequestPlaceAggregate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "request_id", nullable = false, length = 64)
+    @Column(name = "request_id", nullable = false, length = 100)
     private String requestId;
 
     @Column(name = "place_id", nullable = false)

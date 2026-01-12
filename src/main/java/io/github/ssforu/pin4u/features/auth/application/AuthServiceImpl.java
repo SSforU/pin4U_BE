@@ -23,22 +23,37 @@ public class AuthServiceImpl implements AuthService {
     public AuthDtos.LoginResponse loginWithKakaoToken(String accessToken) {
         var me = kakao.getMe(accessToken).block();
         if (me == null) throw new IllegalArgumentException("kakao_me_null");
+
         Long kakaoId = me.id();
-        String nickname =
-                me.kakao_account() != null && me.kakao_account().profile() != null
-                        ? me.kakao_account().profile().nickname()
+        String kakaoNickname =
+                me.kakao_account() != null &&
+                        me.kakao_account().profile() != null &&
+                        me.kakao_account().profile().nickname() != null &&
+                        !me.kakao_account().profile().nickname().isBlank()
+                        ? me.kakao_account().profile().nickname().trim()
                         : "게스트";
 
         var found = users.findByKakaoUserId(kakaoId);
         if (found.isPresent()) {
             User u = found.get();
-            if (nickname != null && !nickname.isBlank() && !nickname.equals(u.getNickname())) {
-                u.setNickname(nickname);
+
+            // ✅ 기존 유저: 닉네임을 덮어쓰지 않는다.
+            //    다만 DB 닉네임이 비어있다면(초기 마이그레이션 등) 한 번만 보수적으로 채워준다.
+            if (u.getNickname() == null || u.getNickname().isBlank()) {
+                u.setNickname(kakaoNickname);
             }
-            return new AuthDtos.LoginResponse(new AuthDtos.LoginUser(u.getId(), u.getNickname()), false);
+
+            return new AuthDtos.LoginResponse(
+                    new AuthDtos.LoginUser(u.getId(), u.getNickname()),
+                    false
+            );
         }
 
-        User created = users.save(new User(kakaoId, nickname, ""));
-        return new AuthDtos.LoginResponse(new AuthDtos.LoginUser(created.getId(), created.getNickname()), true);
+        // ✅ 신규 가입: 최초 1회만 카카오 닉네임(없으면 '게스트')로 초기화
+        User created = users.save(new User(kakaoId, kakaoNickname, ""));
+        return new AuthDtos.LoginResponse(
+                new AuthDtos.LoginUser(created.getId(), created.getNickname()),
+                true
+        );
     }
 }

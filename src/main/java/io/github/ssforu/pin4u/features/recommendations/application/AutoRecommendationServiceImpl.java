@@ -102,7 +102,8 @@ public class AutoRecommendationServiceImpl implements AutoRecommendationService 
                             toBigDecimal(st.getLat()), toBigDecimal(st.getLng())
                     ),
                     req.getRequestMessage(),
-                    List.of()
+                    List.of(),
+                    null // ★ 개인/자동추천 문맥 → group 없음
             );
         }
 
@@ -182,7 +183,8 @@ public class AutoRecommendationServiceImpl implements AutoRecommendationService 
                         toBigDecimal(st.getLat()), toBigDecimal(st.getLng())
                 ),
                 req.getRequestMessage(),
-                items
+                items,
+                null // ★ 개인/자동추천 문맥 → group 없음
         );
     }
 

@@ -50,10 +50,20 @@ public final class RequestDetailDtos {
             @JsonProperty("recommended_count") Integer recommendedCount
     ) {}
 
+    // ★ 그룹 요약(그룹지도 응답에서만 채움; 개인지도는 null)
+    public record GroupBrief(
+            Long id,
+            String slug,
+            String name,
+            @JsonProperty("image_url") String imageUrl
+    ) {}
+
+    // ★ 개인지도 스키마 유지 + group(옵션) 추가
     public record RequestDetailResponse(
             String slug,
             Station station,
             String requestMessage,
-            List<Item> items
+            List<Item> items,
+            @JsonInclude(JsonInclude.Include.NON_NULL) GroupBrief group
     ) {}
 }

@@ -43,9 +43,9 @@ app:
   ai:
     enabled: ${APP_AI_ENABLED:true}
     openai:
-      base_url: https://api.openai.com/v1
+      base-url: https://api.openai.com/v1
       model: ${OPENAI_MODEL:gpt-4o-mini}
-      timeout_ms: 8000
+      api-key: ${OPENAI_API_KEY:}
 
 # 프록시/ALB 뒤에서 X-Forwarded-* 헤더를 인지하여 HTTPS 판별 정확도 확보
 server:
@@ -81,3 +81,11 @@ management:
   endpoint:
     flyway:
       enabled: true
+    endpoint:
+      info:
+        enabled: true
+    info:
+      env:
+        enabled: false   # 필요하면 true
+      git:
+        mode: simple

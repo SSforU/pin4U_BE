@@ -1,3 +1,4 @@
+// src/main/java/io/github/ssforu/pin4u/features/recommendations/dto/RecommendationDtos.java
 package io.github.ssforu.pin4u.features.recommendations.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
@@ -19,16 +20,28 @@ public final class RecommendationDtos {
     }
 
     public static class SubmitItem {
-        @JsonProperty("external_id")           @JsonAlias("externalId")            private String externalId;
-        @JsonProperty("recommender_nickname")  @JsonAlias("recommenderNickname")   private String recommenderNickname;
-        @JsonProperty("recommend_message")     @JsonAlias("recommendMessage")      private String recommendMessage;
-        @JsonProperty("image_url")             @JsonAlias("imageUrl")              private String imageUrl;
+        @JsonProperty("external_id")
+        @JsonAlias({"externalId", "place_external_id", "placeExternalId"}) // ⬅️ 추가
+        private String externalId;
+
+        @JsonProperty("recommender_nickname")  @JsonAlias("recommenderNickname")
+        private String recommenderNickname;
+
+        @JsonProperty("recommend_message")     @JsonAlias("recommendMessage")
+        private String recommendMessage;
+
+        @JsonProperty("image_url")             @JsonAlias("imageUrl")
+        private String imageUrl;
 
         // 기본값: 공개(true)
-        @JsonProperty("image_is_public")       @JsonAlias("imageIsPublic")         private Boolean imageIsPublic = Boolean.TRUE;
+        @JsonProperty("image_is_public")       @JsonAlias("imageIsPublic")
+        private Boolean imageIsPublic = Boolean.TRUE;
 
-        @JsonProperty("tags")                                                      private List<String> tags;
-        @JsonProperty("guest_id")              @JsonAlias("guestId")               private String guestId;
+        @JsonProperty("tags")
+        private List<String> tags;
+
+        @JsonProperty("guest_id")              @JsonAlias("guestId")
+        private String guestId;
 
         public SubmitItem() {}
         public SubmitItem(String externalId, String recommenderNickname, String recommendMessage,

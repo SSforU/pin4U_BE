@@ -13,23 +13,26 @@ import java.time.OffsetDateTime;
 @Builder
 public class PlaceMock {
 
+    // PK: places.external_id (VARCHAR(100))
     @Id
-    @Column(name = "external_id", nullable = false, length = 80)
+    @Column(name = "external_id", nullable = false, length = 100)
     private String externalId;
 
+    // NUMERIC(2,1) ↔ BigDecimal 매핑
     @Column(name = "rating", precision = 2, scale = 1)
     private BigDecimal rating;
 
     @Column(name = "rating_count")
     private Integer ratingCount;
 
-    @Column(name = "review_snippets", columnDefinition = "jsonb")
+    // V19에서 DB 타입은 text. 애플리케이션은 JSON 문자열을 그대로 넣고/읽는다.
+    @Column(name = "review_snippets")
     private String reviewSnippetsJson;
 
-    @Column(name = "image_urls", columnDefinition = "jsonb")
+    @Column(name = "image_urls")
     private String imageUrlsJson;
 
-    @Column(name = "opening_hours", columnDefinition = "jsonb")
+    @Column(name = "opening_hours")
     private String openingHoursJson;
 
     @Column(name = "updated_at", nullable = false)
@@ -45,51 +48,3 @@ public class PlaceMock {
         updatedAt = OffsetDateTime.now();
     }
 }
-
-
-
-/*
-package io.github.ssforu.pin4u.features.places.domain;
-
-import jakarta.persistence.*;
-import lombok.*;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-
-@Entity
-@Table(name = "place_mock")
-@Getter @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
-public class PlaceMock {
-
-    @Id
-    @Column(name = "external_id", nullable = false, length = 100) // 80 → 100
-    private String externalId;
-
-    @Column(name = "rating", precision = 2, scale = 1)
-    private BigDecimal rating;
-
-    @Column(name = "rating_count")
-    private Integer ratingCount;
-
-    // DB jsonb를 문자열로 보관 (서비스에서 JSON 파싱)
-    @Column(name = "review_snippets", columnDefinition = "jsonb")
-    private String reviewSnippetsJson;
-
-    @Column(name = "image_urls", columnDefinition = "jsonb")
-    private String imageUrlsJson;
-
-    @Column(name = "opening_hours", columnDefinition = "jsonb")
-    private String openingHoursJson;
-
-    // DB DEFAULT now() 사용 (NOT NULL 위반 방지)
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime updatedAt;
-}
-
-
-
-*/

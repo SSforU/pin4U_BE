@@ -36,12 +36,18 @@ public class RequestController {
             return ResponseEntity.status(401).body(ApiResponse.error("UNAUTHORIZED", "login required", null));
         }
 
-        var created = requestService.create(me, req.stationCode(), req.requestMessage(), /*groupSlug*/ req.groupSlug());
+        try {
+            var created = requestService.create(me, req.stationCode(), req.requestMessage(), /*groupSlug*/ req.groupSlug());
 
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("request", created);
-        return ResponseEntity.created(URI.create("/r/" + created.slug()))
-                .body(ApiResponse.success(body));
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("request", created);
+            return ResponseEntity.created(URI.create("/r/" + created.slug()))
+                    .body(ApiResponse.success(body));
+        } catch (IllegalArgumentException e) {
+            // ✅ 핵심: 서비스에서 던진 검증 실패는 전부 400으로 고정
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("VALIDATION_ERROR", e.getMessage(), null));
+        }
     }
 
     @Operation(summary = "요청 목록", description = "최신 순서로 요청 리스트를 반환합니다.")
@@ -72,5 +78,21 @@ public class RequestController {
             case NOT_OWNER -> ResponseEntity.status(403).build(); // 403
             case NOT_FOUND -> ResponseEntity.status(404).build(); // 404
         };
+    }
+
+    // ✅ 신규: 개인지도(요청) 오너 닉네임 조회 (비인증)
+    @Operation(summary = "요청 오너 닉네임 조회", description = "요청 slug 소유자의 user_id와 nickname을 반환합니다.")
+    @GetMapping("/{slug}/owner")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getOwner(@PathVariable String slug) {
+        try {
+            var brief = requestService.getOwnerByRequestSlug(slug);
+            return ResponseEntity.ok(ApiResponse.success(
+                    Map.of("owner_user_id", brief.userId(), "owner_nickname", brief.nickname())
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(404).body(
+                    ApiResponse.error("NOT_FOUND", e.getMessage(), Map.of("slug", slug))
+            );
+        }
     }
 }

@@ -1,3 +1,4 @@
+// src/main/java/io/github/ssforu/pin4u/features/groups/domain/GroupMember.java
 package io.github.ssforu.pin4u.features.groups.domain;
 
 import jakarta.persistence.*;
@@ -7,17 +8,19 @@ import java.time.Instant;
 @Table(name = "group_members")
 public class GroupMember {
 
-    public enum Role { owner, member }                 // DB CHECK와 값 일치 (소문자)
-    public enum Status { pending, approved }           // DB CHECK와 값 일치 (소문자)
+    // 자바 enum은 관례대로 UPPERCASE로 선언
+    public enum Role { OWNER, MEMBER }
+    public enum Status { PENDING, APPROVED }
 
     @EmbeddedId
     private GroupMemberId id;
 
-    @Enumerated(EnumType.STRING)
+    // ★ @Enumerated 제거, 컨버터 명시
+    @Convert(converter = RoleConverter.class)
     @Column(name = "role", nullable = false, length = 10)
     private Role role;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = StatusConverter.class)
     @Column(name = "status", nullable = false, length = 10)
     private Status status;
 
@@ -43,7 +46,7 @@ public class GroupMember {
     public Instant getApprovedAt() { return approvedAt; }
 
     public void approve() {
-        this.status = Status.approved;
+        this.status = Status.APPROVED;  // 자바는 대문자 enum
         this.approvedAt = Instant.now();
     }
 }

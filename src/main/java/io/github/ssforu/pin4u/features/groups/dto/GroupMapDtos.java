@@ -1,3 +1,4 @@
+/*
 package io.github.ssforu.pin4u.features.groups.dto;
 
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos;
@@ -18,3 +19,4 @@ public final class GroupMapDtos {
             List<RequestDetailDtos.Item> items
     ) {}
 }
+*/

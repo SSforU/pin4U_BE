@@ -18,9 +18,7 @@ version = '0.0.1-SNAPSHOT'
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 
 configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
+    compileOnly { extendsFrom annotationProcessor }
 }
 
 dependencies {
@@ -30,27 +28,19 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.5.4'
     implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
 
-    // swagger ui
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
-    // s3
     implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
 
-
-    // Flyway (PG 17.5)
-            implementation 'org.flywaydb:flyway-core:11.7.2'
+    implementation 'org.flywaydb:flyway-core:11.7.2'
     implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
-
     runtimeOnly 'org.postgresql:postgresql:42.7.7'
 
-    // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
     testCompileOnly 'org.projectlombok:lombok:1.18.34'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
 
-    // @ConfigurationProperties metadata
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.5.4'
-
     developmentOnly 'org.springframework.boot:spring-boot-devtools:3.5.4'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.5.4'
@@ -58,7 +48,6 @@ dependencies {
     testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
     testImplementation 'org.testcontainers:postgresql:1.20.2'
 
-    // WebClient (Reactive server 미구동, WebClient만 사용)
     implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
 }
 
@@ -67,10 +56,19 @@ tasks.withType(Test).configureEach {
     onlyIf { project.hasProperty("withTests") }
     systemProperty "spring.testcontainers.enabled", "false"
 }
-
 tasks.named('compileTestJava') { onlyIf { project.hasProperty('withTests') } }
 tasks.named('processTestResources') { onlyIf { project.hasProperty('withTests') } }
 tasks.named('testClasses') { onlyIf { project.hasProperty('withTests') } }
 
-springBoot { mainClass = "io.github.ssforu.pin4u.Pin4uApplication" }
+springBoot {
+    mainClass = "io.github.ssforu.pin4u.Pin4uApplication"
+    // ★ JAR 안에 META-INF/build-info.properties 생성 → /actuator/info에서 확인 가능
+    buildInfo()
+}
+// bootRun도 명시 유지
 tasks.named("bootRun") { mainClass.set("io.github.ssforu.pin4u.Pin4uApplication") }
+
+// ★ bootJar가 항상 buildInfo를 포함하게 의존 추가
+tasks.named("bootJar") {
+    dependsOn tasks.named("bootBuildInfo")
+}

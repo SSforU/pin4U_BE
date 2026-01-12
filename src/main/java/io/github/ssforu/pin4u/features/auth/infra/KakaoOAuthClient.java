@@ -28,6 +28,19 @@ public class KakaoOAuthClient {
                 .uri("/v2/user/me")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .retrieve()
+                // ★ 상태별 예외 매핑 추가
+                .onStatus(s -> s.value() == 401,
+                        resp -> resp.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .map(body -> new IllegalArgumentException("invalid_kakao_token")))
+                .onStatus(s -> s.is4xxClientError(),
+                        resp -> resp.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .map(body -> new IllegalArgumentException("kakao_4xx")))
+                .onStatus(s -> s.is5xxServerError(),
+                        resp -> resp.bodyToMono(String.class)
+                                .defaultIfEmpty("")
+                                .map(body -> new IllegalStateException("kakao_5xx")))
                 .bodyToMono(KakaoMe.class);
     }
 }

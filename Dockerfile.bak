@@ -1,0 +1,10 @@
+# Dockerfile
+FROM eclipse-temurin:17-jre-jammy
+
+# 빌드 산출물 경로를 와일드카드로 (버전이 바뀌어도 안전)
+ARG JAR_FILE=build/libs/*.jar
+COPY ${JAR_FILE} /app.jar
+
+EXPOSE 8080
+ENTRYPOINT ["java","-jar","/app.jar"]
+
