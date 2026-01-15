@@ -171,7 +171,7 @@ resource "aws_db_instance" "portfolio" {
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   skip_final_snapshot    = true
   publicly_accessible    = true
-  monitoring_interval    = 60
+  monitoring_interval    = 0
 }
 
 # 7) 출력값
