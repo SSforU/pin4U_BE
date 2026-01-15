@@ -46,7 +46,7 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# 3) 보안 그룹 (세미콜론 제거 및 줄바꿈 적용)
+# 3) 보안 그룹
 resource "aws_security_group" "ec2" {
   name        = "pin4u-ec2-sg"
   vpc_id      = aws_vpc.main.id
@@ -113,15 +113,25 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
+# [수정/추가] 4-1) SSH 키 페어를 AWS 클라우드에 업로드
+# 이 로직이 있어야 AWS 콘솔에 키가 없어도 자동으로 등록됩니다.
+resource "aws_key_pair" "portfolio" {
+  key_name   = "portfolio-key"
+  public_key = file("${path.module}/portfolio-key.pub")
+}
+
 # 5) EC2 인스턴스
 resource "aws_instance" "app" {
   ami                    = "ami-0e9bfdb247cc8de84" # Ubuntu 22.04 LTS
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public_1.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
-  key_name               = "portfolio-key"
+
+  # 위에서 선언한 aws_key_pair의 이름을 참조합니다.
+  key_name               = aws_key_pair.portfolio.key_name
+
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
-  monitoring             = true # 세부 모니터링 활성화
+  monitoring             = true
 
   user_data = <<-EOF
               #!/bin/bash
@@ -148,7 +158,10 @@ resource "aws_db_subnet_group" "rds" {
 resource "aws_db_instance" "portfolio" {
   identifier           = "pin4u-db"
   engine               = "postgres"
-  engine_version       = "16.3"
+
+  # [수정] engine_version을 "16"으로 변경하여 AWS가 최신 패치 버전을 자동으로 선택하게 함
+  engine_version       = "16"
+
   instance_class       = "db.t3.micro"
   allocated_storage    = 20
   db_name              = "pin4u_be"
