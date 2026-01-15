@@ -47,8 +47,6 @@ jobs:
           RDS_ENDPOINT="$(printf '%s' '${{ secrets.RDS_ENDPOINT }}' | tr -d '\r\n')"
           RDS_PASSWORD="$(printf '%s' '${{ secrets.RDS_PASSWORD }}' | tr -d '\r\n')"
           IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
-          
-          # PostgreSQL용 JDBC URL 및 환경변수 설정
           DB_URL="jdbc:postgresql://${RDS_ENDPOINT}/pin4u_be"
           
           aws ssm send-command \

@@ -1,9 +1,9 @@
-# Provider 설정
+# 1) Provider 설정
 provider "aws" {
   region = "ap-northeast-2"
 }
 
-# VPC 및 네트워크 설정
+# 2) VPC 및 네트워크 설정
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
@@ -46,43 +46,122 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# 보안 그룹 (사용자 요청에 따라 0.0.0.0/0 유지)
+# 3) 보안 그룹 (세미콜론 제거 및 줄바꿈 적용)
 resource "aws_security_group" "ec2" {
-  name   = "pin4u-ec2-sg"
-  vpc_id = aws_vpc.main.id
-  ingress { from_port = 8080; to_port = 8080; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  ingress { from_port = 22; to_port = 22; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
-  egress { from_port = 0; to_port = 0; protocol = "-1"; cidr_blocks = ["0.0.0.0/0"] }
+  name        = "pin4u-ec2-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
 resource "aws_security_group" "rds" {
-  name   = "pin4u-rds-sg"
-  vpc_id = aws_vpc.main.id
-  ingress { from_port = 5432; to_port = 5432; protocol = "tcp"; cidr_blocks = ["0.0.0.0/0"] }
+  name        = "pin4u-rds-sg"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-# RDS 서브넷 그룹
+# 4) IAM 설정 (SSM 및 ECR 접근 권한)
+resource "aws_iam_role" "ec2_role" {
+  name = "pin4u-ec2-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_role_policy_attachment" "cw_agent" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "pin4u-ec2-profile"
+  role = aws_iam_role.ec2_role.name
+}
+
+# 5) EC2 인스턴스
+resource "aws_instance" "app" {
+  ami                    = "ami-0e9bfdb247cc8de84" # Ubuntu 22.04 LTS
+  instance_type          = "t3.micro"
+  subnet_id              = aws_subnet.public_1.id
+  vpc_security_group_ids = [aws_security_group.ec2.id]
+  key_name               = "portfolio-key"
+  iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
+  monitoring             = true # 세부 모니터링 활성화
+
+  user_data = <<-EOF
+              #!/bin/bash
+              sudo apt-get update
+              sudo apt-get install -y docker.io
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo usermod -aG docker ubuntu
+              EOF
+
+  tags = { Name = "pin4u-app" }
+}
+
+resource "aws_eip" "app" {
+  instance = aws_instance.app.id
+}
+
+# 6) RDS 설정 (PostgreSQL)
 resource "aws_db_subnet_group" "rds" {
   name       = "pin4u-rds-subnet-group"
   subnet_ids = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 }
 
-# RDS 인스턴스 (PostgreSQL 설정 반영)
 resource "aws_db_instance" "portfolio" {
   identifier           = "pin4u-db"
-  engine               = "postgres"             # PostgreSQL 엔진
-  engine_version       = "16.3"                 # 버전 고정
+  engine               = "postgres"
+  engine_version       = "16.3"
   instance_class       = "db.t3.micro"
   allocated_storage    = 20
-  db_name              = "pin4u_be"             # DB 이름 변경
-  username             = "pin4u"                # build.gradle 계정 반영
+  db_name              = "pin4u_be"
+  username             = "pin4u"
   password             = var.db_password
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   skip_final_snapshot    = true
-  publicly_accessible    = true                 # 테스트용 공개
-  monitoring_interval    = 60                   # 성능 측정용 모니터링 활성화
+  publicly_accessible    = true
+  monitoring_interval    = 60
 }
 
-# 출력값
+# 7) 출력값
+output "public_ip" { value = aws_eip.app.public_ip }
 output "rds_endpoint" { value = aws_db_instance.portfolio.endpoint }
+output "instance_id" { value = aws_instance.app.id }
