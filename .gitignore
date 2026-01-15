@@ -1,32 +1,32 @@
-
-# IDE
-.idea/
-*.iml
-
-# Gradle
+# --- Java & Gradle ---
 .gradle/
-
-# Build outputs
 build/
+!gradle/wrapper/gradle-wrapper.jar
 out/
 
-# OS
-.DS_Store
+# --- Terraform & Secrets ---
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
 
+# --- AWS & Security ---
+*.pem
+*.pub
+portfolio-key*
+.aws/
 
-!src/
-!src/**
-!*.java
-!*.kt
-!src/
-!src/**
-!*.java
-!*.kt
-/.idea/
-/build/
-/out/
-
-
-
-.env
+# --- Spring Config ---
 src/main/resources/application-local.yml
+src/main/resources/application-prod.yml
+.env
+*.cookies
+cookies.txt
+
+# --- IDE & OS ---
+.idea/
+*.iml
+.DS_Store
