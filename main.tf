@@ -178,3 +178,16 @@ resource "aws_db_instance" "portfolio" {
 output "public_ip" { value = aws_eip.app.public_ip }
 output "rds_endpoint" { value = aws_db_instance.portfolio.endpoint }
 output "instance_id" { value = aws_instance.app.id }
+
+# 8) ECR 리포지토리 생성 (이게 있어야 docker push 에러가 안 납니다)
+resource "aws_ecr_repository" "backend" {
+  name                 = "backend-portfolio"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+}
+
+# 9) EC2가 ECR에서 이미지를 읽어올 수 있도록 권한 추가
+resource "aws_iam_role_policy_attachment" "ecr_readonly" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
