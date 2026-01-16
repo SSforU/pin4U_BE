@@ -105,7 +105,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
 
         if (!need.isEmpty()) {
             Map<String, PlaceMock> ensured = mockAllocator.ensureMocks(need);
-            // ★ 수정됨: .toList() 대신 Collectors.toList()를 사용하여 수정 가능한 리스트로 반환
+            // ★ 수정: .toList() 대신 .collect(Collectors.toList()) 사용하여 수정 가능하도록 변경
             items = items.stream().map(cur -> {
                 if (cur.mock() != null) return cur;
                 PlaceMock pm = ensured.get(cur.externalId());
@@ -125,7 +125,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                 );
             }).collect(Collectors.toList());
         } else {
-            // ★ 수정됨: 아이템이 이미 다 있어도 수정 가능하도록 ArrayList로 감싸기
+            // ★ 추가: items가 이미 채워져 있어도 수정 가능하도록 ArrayList로 변환
             items = new ArrayList<>(items);
         }
 
