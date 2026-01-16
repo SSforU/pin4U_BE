@@ -17,12 +17,12 @@ const BASE_URL = 'http://16.184.53.121:8080';
 export default function () {
     // 1. N+1 & 인덱스: 공유 지도 상세 조회 (Slug 기반)
     // 리팩토링 전: 연관 장소/노트 조회 시 쿼리 폭발 -> p95 급증
-    const detailRes = http.get(`${BASE_URL}/api/v1/requests/test-map-slug`);
+    const detailRes = http.get(`${BASE_URL}/api/requests/test-map-slug`);
     check(detailRes, { 'detail status is 200': (r) => r.status === 200 });
 
     // 2. 캐시: 정적 데이터 성격의 지하철역 목록
     // 리팩토링 전: 매번 DB I/O 발생 -> RDS CPU 부하
-    const stationRes = http.get(`${BASE_URL}/api/v1/stations`);
+    const stationRes = http.get(`${BASE_URL}/api/stations`);
     check(stationRes, { 'station status is 200': (r) => r.status === 200 });
 
     sleep(1);
