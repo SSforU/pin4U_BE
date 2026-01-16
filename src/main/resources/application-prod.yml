@@ -1,56 +1,22 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/pin4u_be
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    # [수정] localhost 대신 환경 변수를 사용하도록 변경
+    url: jdbc:postgresql://${RDS_ENDPOINT}/${DATABASE_NAME}
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: none              # 운영: 스키마 변경 금지
+      ddl-auto: none
     show-sql: false
   flyway:
     enabled: true
     baseline-on-migrate: true
 
-server:
-  forward-headers-strategy: framework
-
+# 성능 측정을 위해 AI와 카카오를 환경 변수로 제어할 수 있게 유지
 app:
-  s3:
-    bucket: ss4u-pin4u-bucket
-    region: ap-northeast-2
-    public-prefix: public/
-    endpoint: "https://ss4u-pin4u-bucket.s3.ap-northeast-2.amazonaws.com"
-
-  cookies:
-    crossSite: true
-    domain: ".ss4u-pin4u.store"
-
   kakao:
-    enabled: ${APP_KAKAO_ENABLED:true}
+    enabled: ${APP_KAKAO_ENABLED:false} # 기본값 false (성능 측정용)
     rest-api-key: ${KAKAO_REST_API_KEY:}
-    api:
-      base-url: https://dapi.kakao.com
-
   ai:
-    enabled: ${APP_AI_ENABLED:true}
-    openai:
-      base-url: https://api.openai.com/v1
-      model: ${OPENAI_MODEL:gpt-4o-mini}
-
-  seed:
-    enabled: false
-  og:
-    image-enabled: false
-  ratelimit:
-    enabled: false
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,mappings,beans
-  endpoint:
-    health:
-      probes:
-        enabled: true
+    enabled: ${APP_AI_ENABLED:false}    # 기본값 false (성능 측정용)
