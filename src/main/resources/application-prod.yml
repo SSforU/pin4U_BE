@@ -1,6 +1,5 @@
 spring:
   datasource:
-    # [수정] localhost 대신 환경 변수를 사용하도록 변경
     url: jdbc:postgresql://${RDS_ENDPOINT}/${DATABASE_NAME}
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
@@ -16,7 +15,10 @@ spring:
 # 성능 측정을 위해 AI와 카카오를 환경 변수로 제어할 수 있게 유지
 app:
   kakao:
-    enabled: ${APP_KAKAO_ENABLED:false} # 기본값 false (성능 측정용)
-    rest-api-key: ${KAKAO_REST_API_KEY:}
+    enabled: ${APP_KAKAO_ENABLED:false}
   ai:
-    enabled: ${APP_AI_ENABLED:false}    # 기본값 false (성능 측정용)
+    enabled: ${APP_AI_ENABLED:false}
+
+# 프록시 없는 환경(EC2 IP 직접 접속)에서의 타임아웃 방지
+server:
+  forward-headers-strategy: none
