@@ -181,31 +181,41 @@ resource "aws_instance" "app" {
     volume_type = "gp3" #
   }
 
-  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 + Swap 추가
+  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 (패키지 설치 순서 준수)
+  # [추가] 네트워크 물리 보정 (MTU 1500 / Ethtool) 및 Swap 설정
   user_data = <<-EOF
               #!/bin/bash
               set -e
 
-              # [추가됨] Swap 파일 생성 (2GB) - 메모리 부족 방지
+              # 1. Swap 메모리 설정 (OOM 방지)
               fallocate -l 2G /swapfile
               chmod 600 /swapfile
               mkswap /swapfile
               swapon /swapfile
               echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 
-              # SSM Agent 설치
+              # 2. 네트워크 물리 보정 (T3 인스턴스 패킷 드랍 방지)
+              # ethtool 설치
+              apt-get update
+              apt-get install -y ethtool
+              # 현재 인터페이스 찾기 (ens5 등)
+              IFACE=$(ip route | grep default | awk '{print $5}')
+              # MTU를 1500으로 강제 고정 (Jumbo Frame 방지)
+              ip link set dev $IFACE mtu 1500
+              # 하드웨어 체크섬 오프로딩 끄기 (ENA 드라이버 버그 방지)
+              ethtool -K $IFACE tx off rx off tso off gso off gro off lro off
+
+              # 3. SSM Agent 설치
               sudo snap install amazon-ssm-agent --classic
               sudo systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
               sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
 
-              # AWS CLI 설치
-              sudo apt-get update
-              sudo apt-get install -y unzip
+              # 4. AWS CLI 설치
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               sudo ./aws/install
 
-              # Docker 설치
+              # 5. Docker 설치
               sudo apt-get install -y ca-certificates curl gnupg
               sudo install -m 0755 -d /etc/apt/keyrings
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -217,7 +227,7 @@ resource "aws_instance" "app" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
-              # CloudWatch Agent 설치
+              # 6. CloudWatch Agent 설치
               sudo wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
               sudo dpkg -i amazon-cloudwatch-agent.deb
               sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
@@ -241,7 +251,7 @@ resource "aws_instance" "app" {
   tags = { Name = "pin4u-app" }
 }
 
-# 탄력적 IP
+# 탄력적 IP (이것을 새로 생성해야 합니다!)
 resource "aws_eip" "app" {
   instance = aws_instance.app.id
   tags = { Name = "pin4u-app-eip" }
