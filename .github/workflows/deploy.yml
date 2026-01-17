@@ -1,6 +1,6 @@
 name: Deploy to AWS
 
-on: #asd
+on:
   push:
     branches: [ main ]
 
@@ -56,7 +56,7 @@ jobs:
               \"docker stop pin4u-app || true\",
               \"docker rm pin4u-app || true\",
               \"aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}\",
-              \"docker run -d --name pin4u-app --network host \
+              \"docker run -d --name pin4u-app -p 8080:8080 \
                 -e JAVA_OPTS=-Xmx384m \
                 -e SPRING_PROFILES_ACTIVE=prod \
                 -e SPRING_DATASOURCE_URL=\\\"${DB_URL}\\\" \

@@ -7,7 +7,7 @@ provider "aws" {
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
-  enable_dns_support   = true # perf-test-lab 정합성
+  enable_dns_support   = true
   tags = { Name = "pin4u-vpc" }
 }
 
@@ -17,7 +17,7 @@ resource "aws_internet_gateway" "main" {
 
 resource "aws_subnet" "public_1" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.3.0/24" # perf-test-lab 정합성
+  cidr_block              = "10.0.3.0/24"
   availability_zone       = "ap-northeast-2a"
   map_public_ip_on_launch = true
 }
@@ -47,9 +47,9 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# 3) 보안 그룹 (perf-test-lab 방식)
+# 3) 보안 그룹
 resource "aws_security_group" "ec2" {
-  name_prefix = "pin4u-ec2-sg-" # 이름 중복 방지
+  name_prefix = "pin4u-ec2-sg-"
   description = "Security group for EC2"
   vpc_id      = aws_vpc.main.id
 
@@ -59,7 +59,6 @@ resource "aws_security_group" "ec2" {
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "Allow Spring Boot application"
   }
 
   # SSH
@@ -70,7 +69,7 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Prometheus & Grafana (perf-test-lab 정합성)
+  # Prometheus & Grafana
   ingress {
     from_port   = 9090
     to_port     = 9090
@@ -102,7 +101,7 @@ resource "aws_security_group" "rds" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 5432 # Postgres Port
+    from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
@@ -113,7 +112,7 @@ resource "aws_security_group" "rds" {
   }
 }
 
-# 4) IAM 설정 (perf-test-lab 정합성)
+# 4) IAM 설정
 resource "aws_iam_role" "ec2_role" {
   name = "pin4u-ec2-role"
   assume_role_policy = jsonencode({
@@ -126,7 +125,6 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
-# ECR 정책
 resource "aws_iam_role_policy" "ecr_policy" {
   name = "pin4u-ecr-policy"
   role = aws_iam_role.ec2_role.id
@@ -145,7 +143,6 @@ resource "aws_iam_role_policy" "ecr_policy" {
   })
 }
 
-# CloudWatch & SSM 정책
 resource "aws_iam_role_policy_attachment" "ssm_policy" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
@@ -160,16 +157,15 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-# 4-1) SSH 키 페어
 resource "aws_key_pair" "portfolio" {
   key_name   = "portfolio-key"
   public_key = file("${path.module}/portfolio-key.pub")
 }
 
-# 5) EC2 인스턴스
+# 5) EC2 인스턴스 (순정 상태로 복귀)
 resource "aws_instance" "app" {
   ami                    = "ami-0e9bfdb247cc8de84" # Ubuntu 22.04 LTS
-  instance_type          = "t3.micro" #
+  instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public_1.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
   key_name               = aws_key_pair.portfolio.key_name
@@ -178,44 +174,34 @@ resource "aws_instance" "app" {
 
   root_block_device {
     volume_size = 30
-    volume_type = "gp3" #
+    volume_type = "gp3"
   }
 
-  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 (패키지 설치 순서 준수)
-  # [추가] 네트워크 물리 보정 (MTU 1500 / Ethtool) 및 Swap 설정
+  # [핵심 변경] backend-pass-portfolio와 동일하게 네트워크 해킹 제거
+  # Swap 설정만 유지 (메모리 부족 방지용)
   user_data = <<-EOF
               #!/bin/bash
               set -e
 
-              # 1. Swap 메모리 설정 (OOM 방지)
+              # 1. Swap 메모리 설정
               fallocate -l 2G /swapfile
               chmod 600 /swapfile
               mkswap /swapfile
               swapon /swapfile
               echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 
-              # 2. 네트워크 물리 보정 (T3 인스턴스 패킷 드랍 방지)
-              # ethtool 설치
-              apt-get update
-              apt-get install -y ethtool
-              # 현재 인터페이스 찾기 (ens5 등)
-              IFACE=$(ip route | grep default | awk '{print $5}')
-              # MTU를 1500으로 강제 고정 (Jumbo Frame 방지)
-              ip link set dev $IFACE mtu 1500
-              # 하드웨어 체크섬 오프로딩 끄기 (ENA 드라이버 버그 방지)
-              ethtool -K $IFACE tx off rx off tso off gso off gro off lro off
-
-              # 3. SSM Agent 설치
+              # 2. SSM Agent 설치
               sudo snap install amazon-ssm-agent --classic
               sudo systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
               sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
 
-              # 4. AWS CLI 설치
+              # 3. AWS CLI 설치
               curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
               unzip awscliv2.zip
               sudo ./aws/install
 
-              # 5. Docker 설치
+              # 4. Docker 설치
+              sudo apt-get update
               sudo apt-get install -y ca-certificates curl gnupg
               sudo install -m 0755 -d /etc/apt/keyrings
               curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
@@ -227,7 +213,7 @@ resource "aws_instance" "app" {
               sudo systemctl start docker
               sudo systemctl enable docker
 
-              # 6. CloudWatch Agent 설치
+              # 5. CloudWatch Agent 설치
               sudo wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
               sudo dpkg -i amazon-cloudwatch-agent.deb
               sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
@@ -251,13 +237,11 @@ resource "aws_instance" "app" {
   tags = { Name = "pin4u-app" }
 }
 
-# 탄력적 IP (이것을 새로 생성해야 합니다!)
 resource "aws_eip" "app" {
   instance = aws_instance.app.id
   tags = { Name = "pin4u-app-eip" }
 }
 
-# 6) RDS 설정
 resource "aws_db_subnet_group" "rds" {
   name       = "pin4u-rds-subnet-group"
   subnet_ids = [aws_subnet.public_1.id, aws_subnet.public_2.id]
@@ -279,7 +263,6 @@ resource "aws_db_instance" "portfolio" {
   monitoring_interval    = 0
 }
 
-# 8) ECR 리포지토리
 resource "aws_ecr_repository" "backend" {
   name                 = "backend-portfolio"
   image_tag_mutability = "MUTABLE"
@@ -303,7 +286,6 @@ resource "aws_ecr_repository_policy" "backend_policy" {
   })
 }
 
-# 7) 출력값
 output "public_ip" { value = aws_eip.app.public_ip }
 output "rds_endpoint" { value = aws_db_instance.portfolio.endpoint }
 output "instance_id" { value = aws_instance.app.id }
