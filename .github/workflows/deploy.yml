@@ -1,6 +1,6 @@
 name: Deploy to AWS
 
-on:
+on: #asd
   push:
     branches: [ main ]
 
