@@ -181,10 +181,17 @@ resource "aws_instance" "app" {
     volume_type = "gp3" #
   }
 
-  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 (패키지 설치 순서 준수)
+  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 + Swap 추가
   user_data = <<-EOF
               #!/bin/bash
               set -e
+
+              # [추가됨] Swap 파일 생성 (2GB) - 메모리 부족 방지
+              fallocate -l 2G /swapfile
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
 
               # SSM Agent 설치
               sudo snap install amazon-ssm-agent --classic
@@ -234,7 +241,7 @@ resource "aws_instance" "app" {
   tags = { Name = "pin4u-app" }
 }
 
-# 탄력적 IP (이것을 새로 생성해야 합니다!)
+# 탄력적 IP
 resource "aws_eip" "app" {
   instance = aws_instance.app.id
   tags = { Name = "pin4u-app-eip" }
