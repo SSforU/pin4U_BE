@@ -7,6 +7,7 @@ provider "aws" {
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
+  enable_dns_support   = true # perf-test-lab 정합성
   tags = { Name = "pin4u-vpc" }
 }
 
@@ -16,7 +17,7 @@ resource "aws_internet_gateway" "main" {
 
 resource "aws_subnet" "public_1" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.3.0/24"
+  cidr_block              = "10.0.3.0/24" # perf-test-lab 정합성
   availability_zone       = "ap-northeast-2a"
   map_public_ip_on_launch = true
 }
@@ -46,21 +47,39 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# 3) 보안 그룹
+# 3) 보안 그룹 (perf-test-lab 방식)
 resource "aws_security_group" "ec2" {
-  name        = "pin4u-ec2-sg"
+  name_prefix = "pin4u-ec2-sg-" # 이름 중복 방지
+  description = "Security group for EC2"
   vpc_id      = aws_vpc.main.id
 
+  # App Port
   ingress {
     from_port   = 8080
     to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow Spring Boot application"
   }
 
+  # SSH
   ingress {
     from_port   = 22
     to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Prometheus & Grafana (perf-test-lab 정합성)
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -71,21 +90,30 @@ resource "aws_security_group" "ec2" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_security_group" "rds" {
-  name        = "pin4u-rds-sg"
+  name_prefix = "pin4u-rds-sg-"
+  description = "Security group for RDS"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 5432
+    from_port   = 5432 # Postgres Port
     to_port     = 5432
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# 4) IAM 설정 (SSM 및 ECR 접근 권한)
+# 4) IAM 설정 (perf-test-lab 정합성)
 resource "aws_iam_role" "ec2_role" {
   name = "pin4u-ec2-role"
   assume_role_policy = jsonencode({
@@ -98,11 +126,30 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
+# ECR 정책
+resource "aws_iam_role_policy" "ecr_policy" {
+  name = "pin4u-ecr-policy"
+  role = aws_iam_role.ec2_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ecr:GetAuthorizationToken",
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
+# CloudWatch & SSM 정책
 resource "aws_iam_role_policy_attachment" "ssm_policy" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
-
 resource "aws_iam_role_policy_attachment" "cw_agent" {
   role       = aws_iam_role.ec2_role.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
@@ -113,8 +160,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_role.name
 }
 
-# [수정/추가] 4-1) SSH 키 페어를 AWS 클라우드에 업로드
-# 이 로직이 있어야 AWS 콘솔에 키가 없어도 자동으로 등록됩니다.
+# 4-1) SSH 키 페어
 resource "aws_key_pair" "portfolio" {
   key_name   = "portfolio-key"
   public_key = file("${path.module}/portfolio-key.pub")
@@ -123,33 +169,78 @@ resource "aws_key_pair" "portfolio" {
 # 5) EC2 인스턴스
 resource "aws_instance" "app" {
   ami                    = "ami-0e9bfdb247cc8de84" # Ubuntu 22.04 LTS
-  instance_type          = "t3.micro"
+  instance_type          = "t3.micro" #
   subnet_id              = aws_subnet.public_1.id
   vpc_security_group_ids = [aws_security_group.ec2.id]
-
-  # 위에서 선언한 aws_key_pair의 이름을 참조합니다.
   key_name               = aws_key_pair.portfolio.key_name
-
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   monitoring             = true
 
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp3" #
+  }
+
+  # [중요] perf-test-lab의 user_data와 100% 동일하게 구성 (패키지 설치 순서 준수)
   user_data = <<-EOF
               #!/bin/bash
+              set -e
+
+              # SSM Agent 설치
+              sudo snap install amazon-ssm-agent --classic
+              sudo systemctl start snap.amazon-ssm-agent.amazon-ssm-agent.service
+              sudo systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
+
+              # AWS CLI 설치
               sudo apt-get update
-              sudo apt-get install -y docker.io
+              sudo apt-get install -y unzip
+              curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip awscliv2.zip
+              sudo ./aws/install
+
+              # Docker 설치
+              sudo apt-get install -y ca-certificates curl gnupg
+              sudo install -m 0755 -d /etc/apt/keyrings
+              curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+              sudo chmod a+r /etc/apt/keyrings/docker.gpg
+              echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+              sudo apt-get update
+              sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              sudo usermod -aG docker ubuntu
               sudo systemctl start docker
               sudo systemctl enable docker
-              sudo usermod -aG docker ubuntu
+
+              # CloudWatch Agent 설치
+              sudo wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+              sudo dpkg -i amazon-cloudwatch-agent.deb
+              sudo mkdir -p /opt/aws/amazon-cloudwatch-agent/etc/
+              sudo bash -c 'cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json' << 'EOT'
+              {
+                "agent": { "metrics_collection_interval": 60, "run_as_user": "root" },
+                "metrics": {
+                  "append_dimensions": { "InstanceId": "$${aws:InstanceId}", "InstanceType": "$${aws:InstanceType}" },
+                  "metrics_collected": {
+                    "mem": { "measurement": ["mem_used_percent"], "metrics_collection_interval": 60 },
+                    "swap": { "measurement": ["swap_used_percent"], "metrics_collection_interval": 60 }
+                  }
+                }
+              }
+              EOT
+              sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+              sudo systemctl start amazon-cloudwatch-agent
+              sudo systemctl enable amazon-cloudwatch-agent
               EOF
 
   tags = { Name = "pin4u-app" }
 }
 
+# 탄력적 IP (이것을 새로 생성해야 합니다!)
 resource "aws_eip" "app" {
   instance = aws_instance.app.id
+  tags = { Name = "pin4u-app-eip" }
 }
 
-# 6) RDS 설정 (PostgreSQL)
+# 6) RDS 설정
 resource "aws_db_subnet_group" "rds" {
   name       = "pin4u-rds-subnet-group"
   subnet_ids = [aws_subnet.public_1.id, aws_subnet.public_2.id]
@@ -158,10 +249,7 @@ resource "aws_db_subnet_group" "rds" {
 resource "aws_db_instance" "portfolio" {
   identifier           = "pin4u-db"
   engine               = "postgres"
-
-  # [수정] engine_version을 "16"으로 변경하여 AWS가 최신 패치 버전을 자동으로 선택하게 함
   engine_version       = "16"
-
   instance_class       = "db.t3.micro"
   allocated_storage    = 20
   db_name              = "pin4u_be"
@@ -174,20 +262,32 @@ resource "aws_db_instance" "portfolio" {
   monitoring_interval    = 0
 }
 
-# 7) 출력값
-output "public_ip" { value = aws_eip.app.public_ip }
-output "rds_endpoint" { value = aws_db_instance.portfolio.endpoint }
-output "instance_id" { value = aws_instance.app.id }
-
-# 8) ECR 리포지토리 생성 (이게 있어야 docker push 에러가 안 납니다)
+# 8) ECR 리포지토리
 resource "aws_ecr_repository" "backend" {
   name                 = "backend-portfolio"
   image_tag_mutability = "MUTABLE"
   force_delete         = true
+  image_scanning_configuration { scan_on_push = true }
 }
 
-# 9) EC2가 ECR에서 이미지를 읽어올 수 있도록 권한 추가
-resource "aws_iam_role_policy_attachment" "ecr_readonly" {
-  role       = aws_iam_role.ec2_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+resource "aws_ecr_repository_policy" "backend_policy" {
+  repository = aws_ecr_repository.backend.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowPushPull"
+      Effect = "Allow"
+      Principal = { AWS = "*" }
+      Action = [
+        "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability",
+        "ecr:PutImage", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload"
+      ]
+    }]
+  })
 }
+
+# 7) 출력값
+output "public_ip" { value = aws_eip.app.public_ip }
+output "rds_endpoint" { value = aws_db_instance.portfolio.endpoint }
+output "instance_id" { value = aws_instance.app.id }
+output "ecr_repository_url" { value = aws_ecr_repository.backend.repository_url }
