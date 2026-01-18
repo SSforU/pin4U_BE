@@ -12,6 +12,9 @@ public interface RequestPlaceAggregateRepository extends JpaRepository<RequestPl
 
     Optional<RequestPlaceAggregate> findByRequestIdAndPlaceId(String requestId, Long placeId);
 
+    // [Theme 2] 요청에 포함된 모든 장소 조회 (요약 생성 대상)
+    List<RequestPlaceAggregate> findAllByRequestId(String requestId);
+
     interface SumRow {
         String getRequestId();
         Long getTotal();

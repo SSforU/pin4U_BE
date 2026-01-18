@@ -1,11 +1,17 @@
 package io.github.ssforu.pin4u.features.requests.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.ssforu.pin4u.features.places.domain.Place;
+import io.github.ssforu.pin4u.features.places.domain.PlaceSummary;
+import io.github.ssforu.pin4u.features.places.infra.PlaceRepository;
+import io.github.ssforu.pin4u.features.places.infra.PlaceSummaryRepository;
+import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -17,7 +23,10 @@ import java.util.Optional;
 @Service
 public class AiSummaryServiceImpl implements AiSummaryService {
 
-    private final WebClient openai;                // 오픈AI용 WebClient
+    private final WebClient openai;
+    private final RequestPlaceAggregateRepository rpaRepository;
+    private final PlaceRepository placeRepository;
+    private final PlaceSummaryRepository placeSummaryRepository;
 
     @Value("${app.ai.enabled:true}")
     private boolean aiEnabled;
@@ -27,9 +36,71 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     private final ObjectMapper om = new ObjectMapper();
 
-    // 🔧 명시적 생성자 + @Qualifier 로 충돌 해결
-    public AiSummaryServiceImpl(@Qualifier("openaiWebClient") WebClient openai) {
+    public AiSummaryServiceImpl(
+            @Qualifier("openaiWebClient") WebClient openai,
+            RequestPlaceAggregateRepository rpaRepository,
+            PlaceRepository placeRepository,
+            PlaceSummaryRepository placeSummaryRepository
+    ) {
         this.openai = openai;
+        this.rpaRepository = rpaRepository;
+        this.placeRepository = placeRepository;
+        this.placeSummaryRepository = placeSummaryRepository;
+    }
+
+    /**
+     * [Theme 2] 비동기 처리 대상 메서드
+     * 1. 지연 시뮬레이션 (3초)
+     * 2. 요청에 속한 장소들 조회
+     * 3. 각 장소에 대해 AI 요약 생성 및 저장
+     */
+    @Override
+    @Transactional
+    public void generateAndSaveSummary(String requestSlug) {
+        // 1. [Simulation] AI API 호출 지연 시뮬레이션 (3초)
+        try {
+            log.info("⏳ [AI] Simulating long running task for request: {}", requestSlug);
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // 2. 요청에 포함된 장소들 조회
+        var aggregates = rpaRepository.findAllByRequestId(requestSlug);
+
+        for (var agg : aggregates) {
+            Long placeId = agg.getPlaceId();
+
+            // 이미 요약이 있으면 스킵 (비용 절감)
+            if (placeSummaryRepository.existsById(placeId)) {
+                continue;
+            }
+
+            // 장소 정보 조회
+            Optional<Place> placeOpt = placeRepository.findById(placeId);
+            if (placeOpt.isEmpty()) continue;
+            Place place = placeOpt.get();
+
+            // 3. 요약 생성 (OpenAI 호출)
+            // (실제 데이터가 부족하므로 이름과 카테고리만으로 생성 시도)
+            Optional<String> summaryOpt = generateSummary(
+                    place.getPlaceName(),
+                    place.getCategoryName(),
+                    null, null, null, null // 상세 정보는 Mock이나 실제 수집 데이터 연동 필요
+            );
+
+            // 4. 저장
+            if (summaryOpt.isPresent()) {
+                PlaceSummary summary = PlaceSummary.builder()
+                        .place(place)
+                        .summaryText(summaryOpt.get())
+                        .evidence("AI Generated based on basic info")
+                        .build();
+                placeSummaryRepository.save(summary);
+                log.info("✅ [AI] Saved summary for place: {}", place.getPlaceName());
+            }
+        }
+        log.info("🎉 [AI] Completed summary generation for request: {}", requestSlug);
     }
 
     @Override
@@ -44,8 +115,8 @@ public class AiSummaryServiceImpl implements AiSummaryService {
         if (!aiEnabled) return Optional.empty();
         try {
             Map<String, Object> ev = new java.util.LinkedHashMap<>();
-            ev.put("place_name", placeName);          // 필수
-            ev.put("category_name", categoryName);    // 필수
+            ev.put("place_name", placeName);
+            ev.put("category_name", categoryName);
             if (rating != null) ev.put("rating", rating);
             if (ratingCount != null) ev.put("rating_count", ratingCount);
             if (reviewSnippets != null && !reviewSnippets.isEmpty()) ev.put("review_snippets", reviewSnippets);
@@ -68,7 +139,6 @@ public class AiSummaryServiceImpl implements AiSummaryService {
                             Map.of("role", "user", "content", user)
                     )
             );
-
 
             Map resp = openai.post()
                     .uri("/chat/completions")
