@@ -2,7 +2,12 @@ spring:
   application:
     name: pin4U
   profiles:
-    default: local
+    default:
+  # [Theme 1] JPA Performance Optimization
+  jpa:
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100
 
 springdoc:
   use-fqn: true
