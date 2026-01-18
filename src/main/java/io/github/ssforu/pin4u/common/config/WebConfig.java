@@ -1,16 +1,31 @@
 package io.github.ssforu.pin4u.common.config;
 
+import io.github.ssforu.pin4u.common.resolver.LoginUserArgumentResolver;
 import org.apache.catalina.filters.RateLimitFilter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.List;
+
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+
+    private final LoginUserArgumentResolver loginUserArgumentResolver; // 추가
+
+    public WebConfig(LoginUserArgumentResolver loginUserArgumentResolver) { // 생성자 주입 추가
+        this.loginUserArgumentResolver = loginUserArgumentResolver;
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(loginUserArgumentResolver);
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
