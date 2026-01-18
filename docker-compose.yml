@@ -1,8 +1,10 @@
 version: '3.8'
+
 services:
+  # 1. PostgreSQL Database (pin4u 전용)
   db:
     image: postgres:16
-    container_name: pin4u-local-db
+    container_name: pin4u-db
     environment:
       POSTGRES_DB: pin4u_be
       POSTGRES_USER: pin4u
@@ -11,6 +13,92 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pin4u-net
+    # DB가 완전히 뜰 때까지 App이 기다리도록 헬스체크 추가
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pin4u -d pin4u_be"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis (캐싱용)
+  redis:
+    image: redis:alpine
+    container_name: pin4u-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - pin4u-net
+
+  # 3. Redis Exporter (Redis 지표를 Prometheus로 전달)
+  redis_exporter:
+    image: oliver006/redis_exporter
+    container_name: redis_exporter
+    ports:
+      - "9121:9121"
+    command:
+      - '--redis.addr=redis://redis:6379'
+    depends_on:
+      - redis
+    networks:
+      - pin4u-net
+
+  # 4. Spring Boot Application
+  app:
+    build: .
+    container_name: spring-app
+    ports:
+      - "8080:8080"
+    environment:
+      # 로컬 Docker 환경에 맞는 DB/Redis 주소 주입
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/pin4u_be
+      SPRING_DATASOURCE_USERNAME: pin4u
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      # 성능 테스트를 위해 힙 메모리를 넉넉하게 확보 (맥북 성능 활용)
+      JAVA_OPTS: "-Xms512m -Xmx1024m"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - pin4u-net
+
+  # 5. Prometheus (모니터링 데이터 수집)
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - pin4u-net
+
+  # 6. Grafana (데이터 시각화)
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - pin4u-net
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:
+  grafana_data:
+
+networks:
+  pin4u-net:
+    driver: bridge
