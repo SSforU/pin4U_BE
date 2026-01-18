@@ -1,4 +1,3 @@
-// pin4U_BE/build.gradle
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.4'
@@ -22,33 +21,42 @@ configurations {
 }
 
 dependencies {
+    // Web & UI
     implementation 'org.springframework.boot:spring-boot-starter-web:3.5.4'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.5.4'
     implementation 'org.springframework.boot:spring-boot-starter-validation:3.5.4'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf:3.5.4'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4' // WebClient 사용 시 필요
 
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
-    implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
-
-    implementation 'org.flywaydb:flyway-core:11.7.2'
-    implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
+    // Data (JPA, Redis, PostgreSQL)
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa:3.5.4'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis:3.5.4' // [추가] Redis 필수
     runtimeOnly 'org.postgresql:postgresql:42.7.7'
 
+    // Migration
+    implementation 'org.flywaydb:flyway-core:11.7.2'
+    implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
+
+    // Monitoring & Docs (Actuator, Prometheus, Swagger)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator:3.5.4'
+    implementation 'io.micrometer:micrometer-registry-prometheus' // [중요] 런타임이 아니라 구현 의존성으로 추가
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5")
+
+    // Cloud
+    implementation 'org.springframework.cloud:spring-cloud-starter-aws:2.2.6.RELEASE'
+
+    // Utils
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
-
     annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor:3.5.4'
     developmentOnly 'org.springframework.boot:spring-boot-devtools:3.5.4'
 
+    // Test
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
     testImplementation 'org.springframework.boot:spring-boot-starter-test:3.5.4'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.5.4'
     testImplementation 'org.testcontainers:junit-jupiter:1.20.2'
     testImplementation 'org.testcontainers:postgresql:1.20.2'
-
-    implementation 'org.springframework.boot:spring-boot-starter-webflux:3.5.4'
 }
 
 tasks.withType(Test).configureEach {
@@ -56,19 +64,12 @@ tasks.withType(Test).configureEach {
     onlyIf { project.hasProperty("withTests") }
     systemProperty "spring.testcontainers.enabled", "false"
 }
-tasks.named('compileTestJava') { onlyIf { project.hasProperty('withTests') } }
-tasks.named('processTestResources') { onlyIf { project.hasProperty('withTests') } }
-tasks.named('testClasses') { onlyIf { project.hasProperty('withTests') } }
 
 springBoot {
     mainClass = "io.github.ssforu.pin4u.Pin4uApplication"
-    // ★ JAR 안에 META-INF/build-info.properties 생성 → /actuator/info에서 확인 가능
-    buildInfo()
+    buildInfo() // Actuator Info 엔드포인트 활성화
 }
-// bootRun도 명시 유지
-tasks.named("bootRun") { mainClass.set("io.github.ssforu.pin4u.Pin4uApplication") }
 
-// ★ bootJar가 항상 buildInfo를 포함하게 의존 추가
 tasks.named("bootJar") {
     dependsOn tasks.named("bootBuildInfo")
 }

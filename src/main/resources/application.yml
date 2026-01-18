@@ -2,22 +2,19 @@ spring:
   application:
     name: pin4U
   profiles:
-    default: local  # 명시하지 않으면 항상 local로 동작
+    default: local
 
 springdoc:
   use-fqn: true
   api-docs:
     enabled: true
-    path: /v3/api-docs              # 명시: 스펙 JSON의 표준 경로
+    path: /v3/api-docs
   swagger-ui:
     enabled: true
-    path: /swagger-ui                # index.html 로 안정 접근 (권장)
-    urls:                            # 절대 URL 절대 금지(반드시 상대경로)
+    path: /swagger-ui
+    urls:
       - name: pin4u
         url: /v3/api-docs
-# (참고) 아래 커스텀 'cors.allowed-origins' 같은 비표준 키는 사용하지 않습니다.
-#cors:
-#  allowed-origins: "http://localhost:3000"
 
 app:
   s3:
@@ -26,9 +23,8 @@ app:
     public-prefix: public/
     endpoint: "https://ss4u-pin4u-bucket.s3.ap-northeast-2.amazonaws.com"
   cookies:
-    crossSite: true   # 운영: true (교차 출처 쿠키 → SameSite=None; Secure)
-    #일단 false로 하고, 운영사 true로 수정
-    domain: ""        # Host-Only 권장. 공유 필요 시 ".ss4u-pin4u.store"
+    crossSite: true
+    domain: ""
   kakao:
     enabled: ${APP_KAKAO_ENABLED:true}
     rest-api-key: ${KAKAO_REST_API_KEY:}
@@ -47,7 +43,6 @@ app:
       model: ${OPENAI_MODEL:gpt-4o-mini}
       api-key: ${OPENAI_API_KEY:}
 
-# 프록시/ALB 뒤에서 X-Forwarded-* 헤더를 인지하여 HTTPS 판별 정확도 확보
 server:
   forward-headers-strategy: framework
 
@@ -77,15 +72,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,mappings
+        include: health,info,metrics,prometheus
   endpoint:
-    flyway:
+    health:
+      show-details: always
+    prometheus:
       enabled: true
-    endpoint:
-      info:
-        enabled: true
-    info:
-      env:
-        enabled: false   # 필요하면 true
-      git:
-        mode: simple

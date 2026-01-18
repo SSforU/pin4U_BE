@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # 1. PostgreSQL Database (pin4u 전용)
+  # 1. PostgreSQL (App 전용 DB)
   db:
     image: postgres:16
     container_name: pin4u-db
@@ -14,8 +14,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - pin4u-net
-    # DB가 완전히 뜰 때까지 App이 기다리도록 헬스체크 추가
+      - monitoring
+    # DB 헬스체크 (App이 DB 뜰 때까지 대기용)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pin4u -d pin4u_be"]
       interval: 5s
@@ -29,9 +29,9 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - pin4u-net
+      - monitoring
 
-  # 3. Redis Exporter (Redis 지표를 Prometheus로 전달)
+  # 3. Redis Exporter (Redis 모니터링 -> Prometheus 연결)
   redis_exporter:
     image: oliver006/redis_exporter
     container_name: redis_exporter
@@ -42,7 +42,7 @@ services:
     depends_on:
       - redis
     networks:
-      - pin4u-net
+      - monitoring
 
   # 4. Spring Boot Application
   app:
@@ -51,24 +51,38 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # 로컬 Docker 환경에 맞는 DB/Redis 주소 주입
+      # [핵심] Docker 환경에 맞는 설정 강제 주입 (yml 파일보다 우선순위 높음)
       SPRING_PROFILES_ACTIVE: prod
+
+      # 1. DB 연결 (localhost -> db)
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/pin4u_be
       SPRING_DATASOURCE_USERNAME: pin4u
       SPRING_DATASOURCE_PASSWORD: password
+
+      # 2. Redis 연결 (localhost -> redis)
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      # 성능 테스트를 위해 힙 메모리를 넉넉하게 확보 (맥북 성능 활용)
-      JAVA_OPTS: "-Xms512m -Xmx1024m"
+
+      # 3. Flyway 활성화 (빈 DB에 테이블 생성 필수)
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+
+      # 4. 모니터링 엔드포인트 강제 노출
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,metrics,info,prometheus"
+      MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
+
+      # 5. 성능 테스트용 JVM 힙 메모리 확보
+      JAVA_OPTS: "-Xms512m -Xmx1536m"
+
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_started
     networks:
-      - pin4u-net
+      - monitoring
 
-  # 5. Prometheus (모니터링 데이터 수집)
+  # 5. Prometheus (데이터 수집)
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -77,7 +91,7 @@ services:
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
-      - pin4u-net
+      - monitoring
 
   # 6. Grafana (데이터 시각화)
   grafana:
@@ -91,14 +105,15 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     networks:
-      - pin4u-net
+      - monitoring
     depends_on:
       - prometheus
 
 volumes:
   postgres_data:
   grafana_data:
+  redis_data:
 
 networks:
-  pin4u-net:
+  monitoring:
     driver: bridge
