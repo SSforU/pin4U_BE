@@ -4,7 +4,12 @@ import jakarta.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "groups")
+@Table(
+        name = "groups",
+        indexes = {
+                @Index(name = "idx_groups_slug", columnList = "slug")
+        }
+)
 public class Group {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
