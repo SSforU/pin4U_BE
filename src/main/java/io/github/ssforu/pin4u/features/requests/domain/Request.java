@@ -4,7 +4,14 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(name = "requests")
+@Table(
+        name = "requests",
+        indexes = {
+                @Index(name = "idx_requests_slug", columnList = "slug"),
+                @Index(name = "idx_requests_group_id", columnList = "group_id"),
+                @Index(name = "idx_requests_station_code", columnList = "station_code")
+        }
+)
 public class Request {
 
     @Id
