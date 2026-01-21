@@ -8,6 +8,9 @@ spring:
     properties:
       hibernate:
         default_batch_fetch_size: 100
+  datasource:
+    hikari:
+      maximum-pool-size: 30  # 서버 내부 병목 제거
 
 springdoc:
   use-fqn: true

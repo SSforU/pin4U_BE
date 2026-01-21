@@ -5,11 +5,11 @@ export const options = {
   scenarios: {
     constant_request_rate: {
       executor: 'constant-arrival-rate',
-      rate: 70,
+      rate: 50,
       timeUnit: '1s',
-      duration: '5m', // 빠른 확인을 위해 2분
+      duration: '5m',
       preAllocatedVUs: 70,
-      maxVUs: 300,
+      maxVUs: 500,
     },
   },
   thresholds: {
