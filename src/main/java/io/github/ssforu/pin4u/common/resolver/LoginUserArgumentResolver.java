@@ -1,6 +1,7 @@
 package io.github.ssforu.pin4u.common.resolver;
 
 import io.github.ssforu.pin4u.common.annotation.LoginUser;
+import io.github.ssforu.pin4u.common.auth.AuthTokenProvider;
 import io.github.ssforu.pin4u.features.member.domain.User;
 import io.github.ssforu.pin4u.features.member.infra.UserRepository;
 import jakarta.servlet.http.Cookie;
@@ -23,14 +24,13 @@ import java.util.Optional;
 public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final UserRepository userRepository;
+    private final AuthTokenProvider tokenProvider;
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        // @LoginUser 어노테이션이 붙어있고, 타입이 Long(ID) 이거나 User 객체인 경우 지원
         boolean hasAnnotation = parameter.hasParameterAnnotation(LoginUser.class);
         boolean isLongType = Long.class.isAssignableFrom(parameter.getParameterType());
         boolean isUserType = User.class.isAssignableFrom(parameter.getParameterType());
-
         return hasAnnotation && (isLongType || isUserType);
     }
 
@@ -41,45 +41,35 @@ public class LoginUserArgumentResolver implements HandlerMethodArgumentResolver 
         HttpServletRequest request = (HttpServletRequest) webRequest.getNativeRequest();
         LoginUser annotation = parameter.getParameterAnnotation(LoginUser.class);
 
-        // 1. 쿠키에서 uid 추출
-        String uid = extractUidFromCookies(request);
+        Optional<Long> verified = extractVerifiedUid(request);
 
-        if (uid == null) {
+        if (verified.isEmpty()) {
             if (annotation != null && annotation.required()) {
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "login_required");
             }
             return null;
         }
 
-        try {
-            Long userId = Long.valueOf(uid);
+        Long userId = verified.get();
 
-            // 파라미터 타입이 Long이면 바로 ID 반환 (DB 조회 X -> 성능 이점)
-            if (Long.class.isAssignableFrom(parameter.getParameterType())) {
-                return userId;
-            }
+        if (Long.class.isAssignableFrom(parameter.getParameterType())) {
+            return userId;
+        }
 
-            // 파라미터 타입이 User면 DB 조회 후 객체 반환
-            if (User.class.isAssignableFrom(parameter.getParameterType())) {
-                return userRepository.findById(userId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "user_not_found"));
-            }
-
-        } catch (NumberFormatException e) {
-            if (annotation != null && annotation.required()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid_uid");
-            }
+        if (User.class.isAssignableFrom(parameter.getParameterType())) {
+            return userRepository.findById(userId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "user_not_found"));
         }
 
         return null;
     }
 
-    private String extractUidFromCookies(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
+    private Optional<Long> extractVerifiedUid(HttpServletRequest request) {
+        if (request.getCookies() == null) return Optional.empty();
         return Arrays.stream(request.getCookies())
-                .filter(cookie -> "uid".equals(cookie.getName()))
+                .filter(c -> "uid".equals(c.getName()))
                 .map(Cookie::getValue)
                 .findFirst()
-                .orElse(null);
+                .flatMap(tokenProvider::validateToken);
     }
 }
