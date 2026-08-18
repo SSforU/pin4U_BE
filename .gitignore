@@ -21,10 +21,12 @@ portfolio-key*
 
 # --- Spring Config ---
 src/main/resources/application-local.yml
-src/main/resources/application-prod.yml
 .env
 *.cookies
 cookies.txt
+db_audit_*.txt
+out_*.json
+*.bak
 
 # --- IDE & OS ---
 .idea/
