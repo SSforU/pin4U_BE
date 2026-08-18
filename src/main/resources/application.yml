@@ -79,12 +79,14 @@ resilience4j:
         limit-refresh-period: 1s
 
 management:
+  server:
+    port: 9091
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
     prometheus:
       enabled: true
