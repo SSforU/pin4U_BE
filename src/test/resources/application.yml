@@ -1,0 +1,19 @@
+app:
+  auth:
+    hmac-secret: "test-only-secret-do-not-use-in-production-at-least-32-chars"
+  kakao:
+    enabled: false
+    rest-api-key: "test-key"
+  ai:
+    enabled: false
+    openai:
+      api-key: "test-key"
+  seed:
+    enabled: false
+  og:
+    image-enabled: false
+
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
