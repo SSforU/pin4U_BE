@@ -19,6 +19,12 @@ app:
   ai:
     enabled: ${APP_AI_ENABLED:false}
 
-# ★ 프록시 타임아웃 해결
 server:
   forward-headers-strategy: none
+
+management:
+  server:
+    port: 9091
+  endpoint:
+    health:
+      show-details: when-authorized

@@ -61,27 +61,11 @@ resource "aws_security_group" "ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # SSH
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # SSH: 제거. SSM Agent가 설치되어 있으므로 SSH 인바운드 불필요.
+  # SSM Session Manager로 대체 (aws ssm start-session --target <instance-id>)
 
-  # Prometheus & Grafana
-  ingress {
-    from_port   = 9090
-    to_port     = 9090
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-  ingress {
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Prometheus & Grafana: 퍼블릭 노출 제거.
+  # EC2 내부에서만 접근하거나 SSM 포트포워딩으로 사용.
 
   egress {
     from_port   = 0
@@ -101,10 +85,10 @@ resource "aws_security_group" "rds" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ec2.id]
   }
 
   lifecycle {
@@ -259,7 +243,7 @@ resource "aws_db_instance" "portfolio" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   skip_final_snapshot    = true
-  publicly_accessible    = true
+  publicly_accessible    = false
   monitoring_interval    = 0
 }
 
@@ -277,7 +261,12 @@ resource "aws_ecr_repository_policy" "backend_policy" {
     Statement = [{
       Sid    = "AllowPushPull"
       Effect = "Allow"
-      Principal = { AWS = "*" }
+      Principal = {
+        AWS = compact([
+          aws_iam_role.ec2_role.arn,
+          var.ci_iam_arn
+        ])
+      }
       Action = [
         "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage", "ecr:BatchCheckLayerAvailability",
         "ecr:PutImage", "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload"

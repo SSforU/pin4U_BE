@@ -25,6 +25,8 @@ springdoc:
         url: /v3/api-docs
 
 app:
+  auth:
+    hmac-secret: ${AUTH_HMAC_SECRET:local-dev-only-secret-do-not-use-in-production!!}
   s3:
     bucket: ss4u-pin4u-bucket
     region: ap-northeast-2
@@ -77,12 +79,14 @@ resilience4j:
         limit-refresh-period: 1s
 
 management:
+  server:
+    port: 9091
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: always
+      show-details: when-authorized
     prometheus:
       enabled: true
