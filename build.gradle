@@ -6,9 +6,9 @@ plugins {
 }
 
 flyway {
-    url = "jdbc:postgresql://localhost:5432/pin4u_be"
-    user = "pin4u"
-    password = "pin4u"
+    url = project.findProperty("flyway.url") ?: "jdbc:postgresql://localhost:5432/pin4u_be"
+    user = project.findProperty("flyway.user") ?: "pin4u"
+    password = project.findProperty("flyway.password") ?: ""
     locations = ["classpath:db/migration"]
 }
 
