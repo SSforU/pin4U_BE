@@ -26,7 +26,6 @@ public class GroupNotesController {
         this.requests = requests;
     }
 
-    // 시연용: 인증/권한 검사는 생략
     @Operation(summary = "그룹지도 장소 노트 조회(리다이렉트)",
             description = "그룹 slug와 external_id로 원본 request.slug를 찾아 기존 /api/requests/{slug}/places/notes 로 302 리다이렉트")
     @GetMapping("/{group_slug}/places/notes")

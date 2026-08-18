@@ -1,5 +1,6 @@
 package io.github.ssforu.pin4u.features.home.api;
 
+import io.github.ssforu.pin4u.common.annotation.LoginUser;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.home.application.HomeService;
 import io.github.ssforu.pin4u.features.home.dto.HomeDtos;
@@ -28,12 +29,9 @@ public class HomeController {
     )
     @GetMapping
     public ResponseEntity<ApiResponse<HomeDtos.DashboardResponse>> get(
-            @CookieValue(name = "uid", required = false) String uid
-    ) {
-        Long me;
-        try { me = (uid == null || uid.isBlank()) ? null : Long.valueOf(uid); }
-        catch (NumberFormatException e) { me = null; }
-        if (me == null) return ResponseEntity.noContent().build(); // 204
+            @LoginUser(required = false) Long me) {
+
+        if (me == null) return ResponseEntity.noContent().build();
 
         var data = homeService.dashboard(me);
         var safe = new HomeDtos.DashboardResponse(
