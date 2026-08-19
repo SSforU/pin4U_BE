@@ -46,6 +46,16 @@ app:
     image-enabled: false
   summary:
     ttl-days: 7
+  http:
+    kakao-search:
+      connect-timeout: 2s
+      response-timeout: 3s
+    kakao-oauth:
+      connect-timeout: 2s
+      response-timeout: 3s
+    openai:
+      connect-timeout: 2s
+      response-timeout: 20s
   ai:
     enabled: ${APP_AI_ENABLED:true}
     openai:

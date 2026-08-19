@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -63,8 +64,12 @@ public class AiKeywordServiceImpl implements AiKeywordService {
                     .bodyValue(body)
                     .retrieve()
                     .bodyToMono(Map.class)
-                    .onErrorReturn(null)
-                    .block();
+                    .onErrorResume(e -> {
+                        log.warn("[AI] OpenAI keyword call failed: {}", e.getMessage());
+                        return Mono.empty();
+                    })
+                    .blockOptional()
+                    .orElse(null);
 
             List<String> out = parseKeywords(resp);
             if (out.isEmpty()) return heuristicFallback(message);

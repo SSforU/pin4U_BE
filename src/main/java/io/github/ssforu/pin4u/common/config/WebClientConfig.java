@@ -1,11 +1,19 @@
 package io.github.ssforu.pin4u.common.config;
 
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class WebClientConfig {
@@ -16,32 +24,55 @@ public class WebClientConfig {
     public WebClient kakaoWebClient(
             WebClient.Builder builder,
             @Value("${app.kakao.enabled:true}") boolean enabled,
-            // base-url은 없으면 기본값 사용
             @Value("${app.kakao.api.base-url:https://dapi.kakao.com}") String baseUrl,
-            // api.key 우선, 없으면 rest-api-key 사용(둘 다 없으면 빈 문자열)
             @Value("${app.kakao.api.key:}") String apiKeyFromApi,
-            @Value("${app.kakao.rest-api-key:}") String apiKeyFromRest
+            @Value("${app.kakao.rest-api-key:}") String apiKeyFromRest,
+            @Value("${app.http.kakao-search.connect-timeout:2s}") Duration connectTimeout,
+            @Value("${app.http.kakao-search.response-timeout:3s}") Duration responseTimeout
     ) {
         final String apiKey = (apiKeyFromApi != null && !apiKeyFromApi.isBlank())
                 ? apiKeyFromApi
                 : (apiKeyFromRest != null ? apiKeyFromRest : "");
 
-        if (!enabled) {
-            // 기능 비활성: 호출 쪽(KakaoSearchAdapterImpl)이 enabled=false로 자체 차단
-            log.info("[KAKAO] disabled by config. base={}", baseUrl);
-            return builder.baseUrl(baseUrl).build();
-        }
+        // 사용자 응답 경로이므로 타임아웃을 짧게 설정 (connect 2s, response 3s)
+        HttpClient httpClient = buildHttpClient(connectTimeout, responseTimeout);
+        var b = builder
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl(baseUrl);
 
+        if (!enabled) {
+            log.info("[KAKAO] disabled by config. base={}", baseUrl);
+            return b.build();
+        }
         if (apiKey.isBlank()) {
-            // 기능은 켜져 있지만 키가 없음 → 런타임 호출 시 401 날 수 있으나, 앱은 부팅 성공
-            log.warn("[KAKAO] enabled=true 이지만 API 키가 없습니다. Authorization 없이 생성합니다. (호출 시 401 가능)");
-            return builder.baseUrl(baseUrl).build();
+            log.warn("[KAKAO] enabled=true but API key is empty.");
+            return b.build();
         }
 
         log.info("[KAKAO] enabled. base={}, key.len={}", baseUrl, apiKey.length());
+        return b.defaultHeader("Authorization", "KakaoAK " + apiKey).build();
+    }
+
+    @Bean
+    public WebClient kakaoOAuthWebClient(
+            WebClient.Builder builder,
+            @Value("${app.http.kakao-oauth.connect-timeout:2s}") Duration connectTimeout,
+            @Value("${app.http.kakao-oauth.response-timeout:3s}") Duration responseTimeout
+    ) {
+        // 로그인 경로. 실패 시 사용자에게 즉시 재시도를 유도해야 하므로 짧은 타임아웃.
+        HttpClient httpClient = buildHttpClient(connectTimeout, responseTimeout);
         return builder
-                .baseUrl(baseUrl)
-                .defaultHeader("Authorization", "KakaoAK " + apiKey)
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .baseUrl("https://kapi.kakao.com")
                 .build();
+    }
+
+    static HttpClient buildHttpClient(Duration connectTimeout, Duration responseTimeout) {
+        return HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
+                .responseTimeout(responseTimeout)
+                .doOnConnected(conn -> conn
+                        .addHandlerLast(new ReadTimeoutHandler(responseTimeout.toSeconds(), TimeUnit.SECONDS))
+                        .addHandlerLast(new WriteTimeoutHandler(responseTimeout.toSeconds(), TimeUnit.SECONDS)));
     }
 }
