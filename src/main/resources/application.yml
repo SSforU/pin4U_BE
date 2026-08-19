@@ -1,6 +1,8 @@
 spring:
   application:
     name: pin4U
+  cache:
+    type: caffeine
   profiles:
     default:
   # [Theme 1] JPA Performance Optimization
