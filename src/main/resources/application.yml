@@ -65,6 +65,10 @@ app:
 
 server:
   forward-headers-strategy: framework
+  shutdown: graceful
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
 
 resilience4j:
   circuitbreaker:

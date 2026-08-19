@@ -58,14 +58,6 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Transactional
     public RecommendationDtos.SubmitResponse submit(String slug, RecommendationDtos.SubmitRequest req) {
 
-        // 🔥 [Theme 2] Before 시뮬레이션: AI 처리 지연(Blocking) 재현
-        // 이 부분이 추가되었습니다. 테스트가 끝나면 삭제해야 합니다.
-        try {
-            Thread.sleep(3000); // 3초 강제 지연
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
         Request request = requestRepository.findBySlug(slug)
                 .orElseThrow(() -> new NoSuchElementException("request_not_found"));
 
