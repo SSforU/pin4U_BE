@@ -4,14 +4,8 @@ import jakarta.persistence.*;
 import java.time.OffsetDateTime;
 
 @Entity
-@Table(
-        name = "requests",
-        indexes = {
-                @Index(name = "idx_requests_slug", columnList = "slug"),
-                @Index(name = "idx_requests_group_id", columnList = "group_id"),
-                @Index(name = "idx_requests_station_code", columnList = "station_code")
-        }
-)
+// 인덱스는 Flyway 마이그레이션(V17, V21)에서 관리. ddl-auto=none이므로 @Index는 무효.
+@Table(name = "requests")
 public class Request {
 
     @Id
