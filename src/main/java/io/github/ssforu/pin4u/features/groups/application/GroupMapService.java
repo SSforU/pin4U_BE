@@ -34,7 +34,7 @@ public class GroupMapService {
     private final ObjectMapper om;
     private final MockAllocator mockAllocator;
 
-    @Transactional // mock 생성 필요시 write 허용
+    @Transactional(readOnly = true)
     public RequestDetailDtos.RequestDetailResponse getGroupMapAsRequestDetail(String groupSlug, Long me, Integer limit) {
         Group g = groups.findBySlug(groupSlug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "group not found"));
@@ -96,7 +96,8 @@ public class GroupMapService {
                     r.getDistance_m(),
                     r.getPlace_url(),
                     mock,
-                    null, // AI는 여기서 미포함
+                    null,
+                    RequestDetailDtos.SummaryStatus.PENDING,
                     r.getRecommended_count()
             );
         }).collect(Collectors.toList());
@@ -124,7 +125,7 @@ public class GroupMapService {
                         cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
                         cur.addressName(), cur.roadAddressName(),
                         cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
-                        filled, cur.ai(), cur.recommendedCount()
+                        filled, cur.ai(), cur.summaryStatus(), cur.recommendedCount()
                 );
             }).collect(Collectors.toList());
         }

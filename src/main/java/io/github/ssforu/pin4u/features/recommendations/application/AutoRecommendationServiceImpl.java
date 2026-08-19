@@ -171,6 +171,7 @@ public class AutoRecommendationServiceImpl implements AutoRecommendationService 
                     c.place_url(),
                     mock,
                     ai,
+                    ai != null ? RequestDetailDtos.SummaryStatus.READY : RequestDetailDtos.SummaryStatus.PENDING,
                     null
             );
             items.add(it);
