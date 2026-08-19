@@ -21,23 +21,36 @@ public class StationServiceImpl implements StationService {
         this.stationRepository = stationRepository;
     }
 
+    // 캐시 키에 limit을 제외하고 최대치(50)로 한 번 조회해 캐시한 뒤 애플리케이션에서 잘라냄.
+    // 트레이드오프:
+    //   [A] limit을 키에 포함 → 같은 검색어에 limit별 별도 캐시. hit rate 낮음.
+    //   [B] limit 제외, 최대치로 캐시 → 메모리 약간 증가하나 hit rate 대폭 향상.
+    // 선택: B. 역 검색 결과는 최대 50건이며, 대부분 10건 이내이므로 낭비가 미미하다.
     @Override
-    @Transactional(readOnly = true) // [Theme 1] 읽기 전용 트랜잭션으로 DB 부하 감소
-    @Cacheable(value = "stations", key = "#q + ':' + #limit", unless = "#result.count == 0") // [Theme 1] 검색 결과 캐싱 (빈 결과는 제외)
+    @Transactional(readOnly = true)
+    @Cacheable(value = "stations",
+            key = "T(io.github.ssforu.pin4u.features.stations.application.StationServiceImpl).normalizeKey(#q)",
+            unless = "#result.count == 0")
     public SearchResponse search(String q, int limit) {
         if (q == null || q.isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
         if (limit < 1 || limit > 50) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "limit must be between 1 and 50");
 
-        // DB 조회 (인덱스가 있다면 빠르지만, 캐시가 있으면 아예 실행되지 않음)
-        var page = stationRepository.findByNameContainingIgnoreCase(q.trim(), PageRequest.of(0, limit));
+        String normalized = q.trim().toLowerCase();
+        var page = stationRepository.findByNameContainingIgnoreCase(normalized, PageRequest.of(0, 50));
 
-        List<StationDtos.StationItem> items = page.getContent().stream().map(s ->
+        List<StationDtos.StationItem> all = page.getContent().stream().map(s ->
                 new StationDtos.StationItem(
                         s.getCode(), s.getName(), s.getLine(),
                         s.getLat(), s.getLng()
                 )
         ).toList();
 
+        List<StationDtos.StationItem> items = all.stream().limit(limit).toList();
         return new SearchResponse(items, items.size());
+    }
+
+    public static String normalizeKey(String q) {
+        if (q == null) return "";
+        return q.trim().toLowerCase();
     }
 }
