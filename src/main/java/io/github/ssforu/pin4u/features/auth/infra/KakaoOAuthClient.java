@@ -1,18 +1,17 @@
-// src/main/java/io/github/ssforu/pin4u/features/auth/infra/KakaoOAuthClient.java
 package io.github.ssforu.pin4u.features.auth.infra;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 @Component
+@RequiredArgsConstructor
 public class KakaoOAuthClient {
-    private final WebClient http = WebClient.builder()
-            .baseUrl("https://kapi.kakao.com")       // ★ 사용자 API는 kapi
-            .defaultHeader(HttpHeaders.USER_AGENT, "pin4u")
-            .build();
+
+    private final WebClient kakaoOAuthWebClient;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record KakaoProfile(String nickname) {}
@@ -24,11 +23,10 @@ public class KakaoOAuthClient {
     public record KakaoMe(long id, KakaoAccount kakao_account) {}
 
     public Mono<KakaoMe> getMe(String accessToken) {
-        return http.get()
+        return kakaoOAuthWebClient.get()
                 .uri("/v2/user/me")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .retrieve()
-                // ★ 상태별 예외 매핑 추가
                 .onStatus(s -> s.value() == 401,
                         resp -> resp.bodyToMono(String.class)
                                 .defaultIfEmpty("")
