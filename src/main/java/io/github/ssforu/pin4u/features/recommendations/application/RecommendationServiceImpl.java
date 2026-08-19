@@ -154,18 +154,34 @@ public class RecommendationServiceImpl implements RecommendationService {
             }
 
             Long placeId = place.getId();
+
+            // 집계행 upsert: 없으면 INSERT, 있으면 원자적 UPDATE
+            // ON CONFLICT로 ux_req_place 위반 시 500 대신 정상 처리
             RequestPlaceAggregate agg = aggregateRepository
                     .findByRequestIdAndPlaceId(slug, placeId)
-                    .orElseGet(() -> new RequestPlaceAggregate(slug, placeId));
+                    .orElse(null);
 
-            if (agg.getId() != null && noteRepository.existsByRpaIdAndGuestId(agg.getId(), guestUuid)) {
+            if (agg == null) {
+                agg = new RequestPlaceAggregate(slug, placeId);
+                try {
+                    agg = aggregateRepository.save(agg);
+                } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                    // 동시 INSERT 경합 — 이미 생성된 행 재조회
+                    agg = aggregateRepository.findByRequestIdAndPlaceId(slug, placeId).orElseThrow();
+                }
+            }
+
+            if (noteRepository.existsByRpaIdAndGuestId(agg.getId(), guestUuid)) {
                 out.getConflicts().add(new RecommendationDtos.SimpleItem(place.getExternalId()));
                 conflicts++;
                 continue;
             }
 
-            agg.increaseCount();
-            agg = aggregateRepository.save(agg);
+            // 원자적 UPDATE: recommended_count = recommended_count + 1
+            // read-modify-write 패턴의 갱신 유실을 SQL 레벨에서 방지
+            aggregateRepository.atomicIncrementCount(slug, placeId);
+            // 후속 로직에서 최신 상태가 필요하므로 재조회
+            agg = aggregateRepository.findByRequestIdAndPlaceId(slug, placeId).orElseThrow();
 
             boolean imageIsPublic = (it.getImageIsPublic() == null) ? true : it.getImageIsPublic();
 
