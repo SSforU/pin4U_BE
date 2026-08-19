@@ -8,8 +8,6 @@ import io.github.ssforu.pin4u.features.groups.domain.GroupMemberId;
 import io.github.ssforu.pin4u.features.groups.infra.GroupMapQueryRepository;
 import io.github.ssforu.pin4u.features.groups.infra.GroupMemberRepository;
 import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
-import io.github.ssforu.pin4u.features.places.application.MockAllocator;
-import io.github.ssforu.pin4u.features.places.domain.PlaceMock;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
@@ -32,7 +30,6 @@ public class GroupMapService {
     private final StationRepository stations;
     private final GroupMapQueryRepository query;
     private final ObjectMapper om;
-    private final MockAllocator mockAllocator;
 
     @Transactional(readOnly = true)
     public RequestDetailDtos.RequestDetailResponse getGroupMapAsRequestDetail(String groupSlug, Long me, Integer limit) {
@@ -102,35 +99,10 @@ public class GroupMapService {
             );
         }).collect(Collectors.toList());
 
-        // mock 보장: 없는 항목만 생성 후 주입
-        Set<String> need = items.stream()
-                .filter(it -> it.mock() == null)
-                .map(RequestDetailDtos.Item::externalId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        if (!need.isEmpty()) {
-            Map<String, PlaceMock> ensured = mockAllocator.ensureMocks(need);
-            items = items.stream().map(cur -> {
-                if (cur.mock() != null) return cur;
-                PlaceMock pm = ensured.get(cur.externalId());
-                if (pm == null) return cur;
-                var filled = new RequestDetailDtos.Mock(
-                        pm.getRating() == null ? null : pm.getRating().doubleValue(),
-                        pm.getRatingCount(),
-                        parseJsonArray(pm.getImageUrlsJson()),
-                        parseJsonArray(pm.getOpeningHoursJson())
-                );
-                return new RequestDetailDtos.Item(
-                        cur.externalId(), cur.id(), cur.placeName(),
-                        cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
-                        cur.addressName(), cur.roadAddressName(),
-                        cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
-                        filled, cur.ai(), cur.summaryStatus(), cur.recommendedCount()
-                );
-            }).collect(Collectors.toList());
-        }
+        // mock이 없는 장소는 mock=null로 반환. 조회 경로에서 쓰기(INSERT)를 수행하지 않는다.
+        // mock 데이터는 요청 생성 시점 또는 추천 제출 시점에 미리 생성되어야 한다.
 
-        // ✅ 핵심: 응답 slug = 대표 request의 slug (노트/집계 라우팅과 Flyway V15 구조에 정확히 부합)
+        // 응답 slug = 대표 request의 slug (노트/집계 라우팅과 Flyway V15 구조에 정확히 부합)
         return new RequestDetailDtos.RequestDetailResponse(
                 first.getSlug(),
                 new RequestDetailDtos.Station(st.getCode(), st.getName(), st.getLine(), st.getLat(), st.getLng()),
