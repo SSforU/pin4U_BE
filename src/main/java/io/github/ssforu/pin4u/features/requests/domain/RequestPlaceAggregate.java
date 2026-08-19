@@ -26,6 +26,10 @@ public class RequestPlaceAggregate {
     @Column(name = "recommended_count", nullable = false)
     private int recommendedCount;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private int version;
+
     @Column(name = "first_recommended_at", nullable = false)
     private OffsetDateTime firstRecommendedAt;
 

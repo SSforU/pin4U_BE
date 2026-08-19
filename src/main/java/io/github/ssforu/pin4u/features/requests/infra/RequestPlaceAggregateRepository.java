@@ -2,6 +2,7 @@ package io.github.ssforu.pin4u.features.requests.infra;
 
 import io.github.ssforu.pin4u.features.requests.domain.RequestPlaceAggregate;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -34,4 +35,13 @@ public interface RequestPlaceAggregateRepository extends JpaRepository<RequestPl
             where a.requestId = :requestId
            """)
     Long sumByRequestId(@Param("requestId") String requestId);
+
+    @Modifying
+    @Query(value = """
+           UPDATE request_place_aggregates
+           SET recommended_count = recommended_count + 1,
+               last_recommended_at = now()
+           WHERE request_id = :requestId AND place_id = :placeId
+           """, nativeQuery = true)
+    int atomicIncrementCount(@Param("requestId") String requestId, @Param("placeId") Long placeId);
 }
