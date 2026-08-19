@@ -46,7 +46,7 @@ public class RequestDetailServiceImpl implements RequestDetailService {
     }
 
     @Override
-    public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi) {
+    public RequestDetailResponse getRequestDetail(String slug, Integer limit) {
         Request req = requestRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "request not found"));
         Station st = stationRepository.findByCode(req.getStationCode())

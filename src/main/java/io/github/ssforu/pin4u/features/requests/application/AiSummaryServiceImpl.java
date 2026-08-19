@@ -4,17 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import io.github.ssforu.pin4u.features.places.domain.Place;
-import io.github.ssforu.pin4u.features.places.domain.PlaceSummary;
-import io.github.ssforu.pin4u.features.places.infra.PlaceRepository;
-import io.github.ssforu.pin4u.features.places.infra.PlaceSummaryRepository;
-import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -27,9 +21,7 @@ import java.util.Optional;
 public class AiSummaryServiceImpl implements AiSummaryService {
 
     private final WebClient openai;
-    private final RequestPlaceAggregateRepository rpaRepository;
-    private final PlaceRepository placeRepository;
-    private final PlaceSummaryRepository placeSummaryRepository;
+    private final AiSummaryTxHelper txHelper;
 
     @Value("${app.ai.enabled:true}")
     private boolean aiEnabled;
@@ -41,76 +33,51 @@ public class AiSummaryServiceImpl implements AiSummaryService {
 
     public AiSummaryServiceImpl(
             @Qualifier("openaiWebClient") WebClient openai,
-            RequestPlaceAggregateRepository rpaRepository,
-            PlaceRepository placeRepository,
-            PlaceSummaryRepository placeSummaryRepository
+            AiSummaryTxHelper txHelper
     ) {
         this.openai = openai;
-        this.rpaRepository = rpaRepository;
-        this.placeRepository = placeRepository;
-        this.placeSummaryRepository = placeSummaryRepository;
+        this.txHelper = txHelper;
     }
 
     /**
-     * [Theme 2] 비동기 처리 대상 메서드
-     * 1. 지연 시뮬레이션 (3초)
-     * 2. 요청에 속한 장소들 조회
-     * 3. 각 장소에 대해 AI 요약 생성 및 저장
+     * 트랜잭션 3단 분리:
+     * [1단: 짧은 읽기 tx] txHelper.loadTargets — 대상 조회, DB 커넥션 즉시 반환
+     * [2단: tx 없음] generateSummary — OpenAI blocking 호출, DB 커넥션 미점유
+     * [3단: 짧은 쓰기 tx] txHelper.saveSummary — 결과 저장, DB 커넥션 즉시 반환
+     *
+     * 이전 구조: 단일 @Transactional 안에서 OpenAI 최대 20초 blocking →
+     * aiTaskExecutor max 50 × DB 커넥션 점유 vs Hikari pool 30 → 풀 고갈.
+     * 분리 후: 외부 호출 동안 DB 커넥션을 점유하지 않는다.
      */
     @Override
-    @Transactional
     public void generateAndSaveSummary(String requestSlug) {
-        // 요청에 포함된 장소들 조회
-        var aggregates = rpaRepository.findAllByRequestId(requestSlug);
+        // [1단: 읽기 tx] 대상 장소 조회 — tx 종료 후 커넥션 반환
+        var targets = txHelper.loadTargets(requestSlug);
 
-        for (var agg : aggregates) {
-            Long placeId = agg.getPlaceId();
-
-            // 이미 요약이 있으면 스킵 (비용 절감)
-            if (placeSummaryRepository.existsById(placeId)) {
-                continue;
-            }
-
-            // 장소 정보 조회
-            Optional<Place> placeOpt = placeRepository.findById(placeId);
-            if (placeOpt.isEmpty()) continue;
-            Place place = placeOpt.get();
-
-            // 3. 요약 생성 (OpenAI 호출)
-            // (실제 데이터가 부족하므로 이름과 카테고리만으로 생성 시도)
+        for (var target : targets) {
+            // [2단: tx 없음] 외부 API 호출 — DB 커넥션 미점유
             Optional<String> summaryOpt = generateSummary(
-                    place.getPlaceName(),
-                    place.getCategoryName(),
-                    null, null, null, null // 상세 정보는 Mock이나 실제 수집 데이터 연동 필요
+                    target.placeName(), target.categoryName(),
+                    null, null, null, null
             );
 
-            // 4. 저장
+            // [3단: 쓰기 tx] 결과 저장 — 짧은 tx
             if (summaryOpt.isPresent()) {
-                PlaceSummary summary = PlaceSummary.builder()
-                        .place(place)
-                        .summaryText(summaryOpt.get())
-                        .evidence("AI Generated based on basic info")
-                        .build();
-                placeSummaryRepository.save(summary);
-                log.info("✅ [AI] Saved summary for place: {}", place.getPlaceName());
+                txHelper.saveSummary(target.placeId(), summaryOpt.get());
+                log.info("[AI] Saved summary for place: {}", target.placeName());
             }
         }
-        log.info("🎉 [AI] Completed summary generation for request: {}", requestSlug);
+        log.info("[AI] Completed summary generation for request: {}", requestSlug);
     }
 
-    // Bulkhead: Hikari pool(30) 대비 AI 동시 호출을 10으로 제한해 커넥션 풀 고갈 방지.
-    // Retry가 안쪽에서 재시도 → 실패가 CircuitBreaker에 기록 → Bulkhead가 동시 호출 상한 관리.
     @Override
     @Bulkhead(name = "openai")
     @CircuitBreaker(name = "openai", fallbackMethod = "generateSummaryFallback")
     @Retry(name = "openai")
     public Optional<String> generateSummary(
-            String placeName,
-            String categoryName,
-            Double rating,
-            Integer ratingCount,
-            List<String> reviewSnippets,
-            List<String> userTags
+            String placeName, String categoryName,
+            Double rating, Integer ratingCount,
+            List<String> reviewSnippets, List<String> userTags
     ) {
         if (!aiEnabled) return Optional.empty();
         try {
@@ -158,9 +125,9 @@ public class AiSummaryServiceImpl implements AiSummaryService {
             Object choicesObj = resp.get("choices");
             if (!(choicesObj instanceof List<?> choices) || choices.isEmpty()) return Optional.empty();
             Object ch0 = choices.get(0);
-            if (!(ch0 instanceof Map<?,?> ch0Map)) return Optional.empty();
+            if (!(ch0 instanceof Map<?, ?> ch0Map)) return Optional.empty();
             Object msgObj = ch0Map.get("message");
-            if (!(msgObj instanceof Map<?,?> msgMap)) return Optional.empty();
+            if (!(msgObj instanceof Map<?, ?> msgMap)) return Optional.empty();
             Object content = msgMap.get("content");
             if (content == null) return Optional.empty();
             String contentStr = String.valueOf(content).trim();
@@ -172,7 +139,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
                 if (st != null && !String.valueOf(st).isBlank()) {
                     return Optional.of(String.valueOf(st));
                 }
-            } catch (Exception ignore) { /* 평문 fallback */ }
+            } catch (Exception ignore) { /* plain text fallback */ }
 
             return Optional.of(contentStr);
         } catch (Exception e) {
