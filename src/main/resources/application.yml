@@ -67,26 +67,32 @@ server:
   forward-headers-strategy: framework
 
 resilience4j:
+  circuitbreaker:
+    instances:
+      kakaoSearch:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20          # 최근 20회 호출 기준으로 실패율 계산
+        failure-rate-threshold: 50       # 50% 실패 시 OPEN
+        wait-duration-in-open-state: 30s # OPEN 후 30초 대기 후 HALF_OPEN 전이
+        permitted-number-of-calls-in-half-open-state: 5
+      openai:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10          # AI 호출은 빈도가 낮으므로 작은 윈도우
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 60s # OpenAI 장애는 복구에 시간 소요
+        permitted-number-of-calls-in-half-open-state: 3
   retry:
     instances:
       kakaoSearch:
         max-attempts: 3
         wait-duration: 300ms
-  timelimiter:
+      openai:
+        max-attempts: 2
+        wait-duration: 1s
+  bulkhead:
     instances:
-      kakaoSearch:
-        timeout-duration: 2s
-  circuitbreaker:
-    instances:
-      kakaoSearch:
-        sliding-window-type: COUNT_BASED
-        sliding-window-size: 20
-        failure-rate-threshold: 50
-  ratelimiter:
-    instances:
-      kakaoSearch:
-        limit-for-period: 10
-        limit-refresh-period: 1s
+      openai:
+        max-concurrent-calls: 10         # Hikari pool(30) 대비 AI 동시 호출 제한
 
 management:
   server:
@@ -94,9 +100,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: when-authorized
     prometheus:
+      enabled: true
+  health:
+    circuitbreakers:
       enabled: true
