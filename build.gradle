@@ -41,6 +41,9 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
 
+    // Retry
+    implementation 'org.springframework.retry:spring-retry'
+
     // Resilience4j
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-micrometer:2.2.0'
