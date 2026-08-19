@@ -1,46 +1,57 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
-import { Counter } from 'k6/metrics';
+import { check } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
-// 동시성 테스트용 설정
 export const options = {
   scenarios: {
     concurrency_test: {
       executor: 'per-vu-iterations',
-      vus: 50,              // 50명이 동시에
-      iterations: 1,        // 딱 1번씩만 추천 (총 50회 추천)
+      vus: 50,
+      iterations: 1,
       maxDuration: '1m',
     },
   },
+  thresholds: {
+    checks: ['rate>0.95'],
+  },
 };
 
-const BASE_URL = 'http://localhost:8080/api';
-// 테스트용 데이터 (미리 DB에 존재해야 함)
-const REQUEST_SLUG = 'test-map-slug';
-const PLACE_ID = 1; // 실제 존재하는 Place ID로 변경 필요
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const SLUG = __ENV.TEST_SLUG || 'test-map-slug';
 
 export default function () {
-  // 1. 추천 요청 (동시 다발적 수행)
+  // POST /api/requests/{slug}/recommendations — 동시 추천
+  // 각 VU가 서로 다른 guestId로 동시에 추천을 제출
   const payload = JSON.stringify({
-    placeId: PLACE_ID,
-    action: 'RECOMMEND' // 가정: 추천 액션
+    items: [
+      {
+        externalId: 'kakao:CONCURRENCY-TARGET',
+        recommenderNickname: `user-${__VU}`,
+        recommendMessage: '동시성 테스트',
+        guestId: `vu-${__VU}-${Date.now()}`,
+        tags: ['맛집'],
+      },
+    ],
   });
 
   const params = {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': `uid=${__VU}`, // 각 VU를 다른 유저로 식별
-    },
+    headers: { 'Content-Type': 'application/json' },
   };
 
-  // 추천 API 호출 (구현 필요)
-  // 예: POST /api/requests/{slug}/places/{id}/recommend
-  const res = http.post(`${BASE_URL}/requests/${REQUEST_SLUG}/places/${PLACE_ID}/recommend`, payload, params);
+  const res = http.post(`${BASE_URL}/api/requests/${SLUG}/recommendations`, payload, params);
 
   check(res, {
     'status is 200': (r) => r.status === 200,
   });
 }
 
-// 테스트 종료 후 DB에서 `recommendedCount`가 50인지 확인하는 것은
-// k6 외부(터미널)에서 `docker exec ... psql ...`로 수행
+// 테스트 종료 후 DB에서 recommendedCount가 VU 수(50)와 일치하는지
+// 외부에서 검증: psql -c "SELECT recommended_count FROM request_place_aggregates WHERE ..."
+
+export function handleSummary(data) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return {
+    stdout: textSummary(data, { indent: '  ', enableColors: true }),
+    [`docs/perf/k6/theme3-concurrency-${ts}.json`]: JSON.stringify(data, null, 2),
+  };
+}

@@ -5,14 +5,20 @@ spring:
     type: caffeine
   profiles:
     default:
-  # [Theme 1] JPA Performance Optimization
   jpa:
     properties:
       hibernate:
-        default_batch_fetch_size: 100
+        # @OneToMany/@ManyToOne 연관관계가 없는 현재 구조에서는 실질 효과 없음.
+        # 향후 연관관계 추가 시 활성화.
+        # default_batch_fetch_size: 100
   datasource:
     hikari:
-      maximum-pool-size: 30  # 서버 내부 병목 제거
+      maximum-pool-size: 30          # db.t3.micro max_connections ≈ 85, 인스턴스 1대 기준 30이면 안전
+      minimum-idle: 10               # 유휴 시 최소 커넥션 유지
+      connection-timeout: 3000       # 3초 내 획득 실패 시 예외
+      idle-timeout: 600000           # 10분 유휴 후 반환
+      max-lifetime: 1740000          # 29분 (RDS wait_timeout=30분보다 짧게 → 서버 측 강제 종료 방지)
+      leak-detection-threshold: 10000 # 10초 이상 반환 안 하면 경고 로그
 
 springdoc:
   use-fqn: true
