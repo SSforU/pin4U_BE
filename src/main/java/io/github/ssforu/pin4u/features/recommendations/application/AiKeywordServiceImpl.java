@@ -1,6 +1,8 @@
 package io.github.ssforu.pin4u.features.recommendations.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +36,8 @@ public class AiKeywordServiceImpl implements AiKeywordService {
     }
 
     @Override
+    @CircuitBreaker(name = "openai", fallbackMethod = "extractTop2Fallback")
+    @Retry(name = "openai")
     public List<String> extractTop2(String message) {
         // 비어있으면 휴리스틱 폴백
         if (message == null || message.isBlank() || !aiEnabled) {
@@ -104,6 +108,12 @@ public class AiKeywordServiceImpl implements AiKeywordService {
             }
         } catch (Exception ignore) {}
         return List.of();
+    }
+
+    @SuppressWarnings("unused")
+    private List<String> extractTop2Fallback(String message, Throwable t) {
+        log.warn("[AI] keyword extraction circuit open, falling back to heuristic: {}", t.getMessage());
+        return heuristicFallback(message);
     }
 
     private List<String> heuristicFallback(String msg) {

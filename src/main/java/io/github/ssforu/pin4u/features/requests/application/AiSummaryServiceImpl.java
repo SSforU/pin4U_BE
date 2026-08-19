@@ -1,6 +1,9 @@
 package io.github.ssforu.pin4u.features.requests.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.bulkhead.annotation.Bulkhead;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import io.github.ssforu.pin4u.features.places.domain.Place;
 import io.github.ssforu.pin4u.features.places.domain.PlaceSummary;
 import io.github.ssforu.pin4u.features.places.infra.PlaceRepository;
@@ -103,7 +106,12 @@ public class AiSummaryServiceImpl implements AiSummaryService {
         log.info("🎉 [AI] Completed summary generation for request: {}", requestSlug);
     }
 
+    // Bulkhead: Hikari pool(30) 대비 AI 동시 호출을 10으로 제한해 커넥션 풀 고갈 방지.
+    // Retry가 안쪽에서 재시도 → 실패가 CircuitBreaker에 기록 → Bulkhead가 동시 호출 상한 관리.
     @Override
+    @Bulkhead(name = "openai")
+    @CircuitBreaker(name = "openai", fallbackMethod = "generateSummaryFallback")
+    @Retry(name = "openai")
     public Optional<String> generateSummary(
             String placeName,
             String categoryName,
@@ -179,5 +187,15 @@ public class AiSummaryServiceImpl implements AiSummaryService {
             log.warn("[AI] summary fail: {}", e.toString());
             return Optional.empty();
         }
+    }
+
+    @SuppressWarnings("unused")
+    private Optional<String> generateSummaryFallback(
+            String placeName, String categoryName,
+            Double rating, Integer ratingCount,
+            List<String> reviewSnippets, List<String> userTags,
+            Throwable t) {
+        log.warn("[AI] summary circuit open for place='{}': {}", placeName, t.getMessage());
+        return Optional.empty();
     }
 }
