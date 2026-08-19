@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 export const options = {
   scenarios: {
@@ -13,31 +14,33 @@ export const options = {
     },
   },
   thresholds: {
-    http_req_duration: ['p(95)<1000'], // 목표: 1초 이내 (최적화 전엔 넘을 수 있음)
-    http_req_failed: ['rate<0.01'],    // 에러율 1% 미만
+    http_req_duration: ['p(95)<500'],
+    http_req_failed: ['rate<0.01'],
+    checks: ['rate>0.95'],
   },
 };
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const SLUG = __ENV.TEST_SLUG || 'test-map-slug';
 
 export default function () {
-  // 1. 상세 조회 (기존 성공)
-  const detailRes = http.get(`${BASE_URL}/api/requests/test-map-slug`);
-  check(detailRes, { 'detail status is 200': (r) => r.status === 200 });
-
-  // 2. 지하철역 검색 [수정 완료: Curl 성공 기준]
-  // (1) 경로: /api/stations/search 로 변경
-  // (2) 파라미터: name -> q 로 변경
-  const targetUrl = `${BASE_URL}/api/stations/search?q=${encodeURIComponent('강남')}`;
-
-  const stationRes = http.get(targetUrl);
-
-  // 실패 시 로그 출력 (디버깅용)
-  if (stationRes.status !== 200) {
-    console.error(`Status: ${stationRes.status} | URL: ${targetUrl} | Body: ${stationRes.body.substring(0, 100)}`);
-  }
-
-  check(stationRes, {
-    'station status is 200': (r) => r.status === 200
+  // GET /api/requests/{slug} — 핀 상세 조회
+  const detailRes = http.get(`${BASE_URL}/api/requests/${SLUG}`);
+  check(detailRes, {
+    'detail status is 200': (r) => r.status === 200,
   });
+
+  // GET /api/stations/search?q=강남 — 역 검색
+  const stationRes = http.get(`${BASE_URL}/api/stations/search?q=${encodeURIComponent('강남')}`);
+  check(stationRes, {
+    'station status is 200': (r) => r.status === 200,
+  });
+}
+
+export function handleSummary(data) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return {
+    stdout: textSummary(data, { indent: '  ', enableColors: true }),
+    [`docs/perf/k6/theme1-query-${ts}.json`]: JSON.stringify(data, null, 2),
+  };
 }

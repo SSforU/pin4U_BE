@@ -1,61 +1,59 @@
 import http from 'k6/http';
 import { check } from 'k6';
+import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 export const options = {
   scenarios: {
     constant_request_rate: {
       executor: 'constant-arrival-rate',
-      rate: 70,             // [Theme 1 동일] 초당 70건 요청
+      rate: 70,
       timeUnit: '1s',
-      duration: '5m',       // [Theme 1 동일] 5분간 지속
-      preAllocatedVUs: 70,  // [Theme 1 동일] 미리 70명 대기
-      maxVUs: 300,          // [Theme 1 동일] 최대 300명까지 확장
+      duration: '5m',
+      preAllocatedVUs: 70,
+      maxVUs: 300,
     },
   },
   thresholds: {
-    // 목표: 비동기 처리이므로 훨씬 빨라야 하지만, 설정 통일을 위해 Theme 1 기준(1초) 적용
-    // 실제 성공 시 p95는 50~100ms 수준으로 나와야 정상입니다.
-    http_req_duration: ['p(95)<1000'],
-    http_req_failed: ['rate<0.01'],    // 에러율 1% 미만
+    http_req_duration: ['p(95)<500'],
+    http_req_failed: ['rate<0.01'],
+    checks: ['rate>0.95'],
   },
 };
 
-const BASE_URL = 'http://localhost:8080';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
+const SLUG = __ENV.TEST_SLUG || 'test-map-slug';
 
 export default function () {
-    // RecommendationController: items가 필수값이므로 더미 데이터 전송
-    const payload = JSON.stringify({
-        items: [
-                    {
-                        // placeId 대신 external_id 등 서버가 요구하는 필드를 채워야 함
-                        // (서버 로그를 보니 external_id가 required라고 뜸)
-                        "placeId": "1",
-                        "comment": "부하테스트",
-                        "externalId": "TEST-EXT-ID-" + Math.random(), // 유니크하게 생성
-                        "guestId": "3fa85f64-5717-4562-b3fc-2c963f66afa6" // UUID 형식 아무거나
-                    }
-                ]
-    });
+  // POST /api/requests/{slug}/recommendations — 추천 제출
+  // 이벤트 기반 비동기 처리이므로 서버는 즉시 응답해야 함
+  const payload = JSON.stringify({
+    items: [
+      {
+        externalId: 'kakao:TEST-' + Math.floor(Math.random() * 10000),
+        recommenderNickname: 'k6tester',
+        recommendMessage: '부하테스트 추천',
+        guestId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+        tags: ['맛집'],
+      },
+    ],
+  });
 
-    const params = {
-        headers: { 'Content-Type': 'application/json' }
-    };
+  const params = {
+    headers: { 'Content-Type': 'application/json' },
+  };
 
-    // [경로 확인] /api/requests/{slug}/recommendations
-    // AI에게 분석 요청을 보내는 API
-    const res = http.post(`${BASE_URL}/api/requests/test-map-slug/recommendations`, payload, params);
+  const res = http.post(`${BASE_URL}/api/requests/${SLUG}/recommendations`, payload, params);
 
-    check(res, {
-        'post success': (r) => r.status === 200,
+  check(res, {
+    'post status is 200': (r) => r.status === 200,
+    'is async fast (< 300ms)': (r) => r.timings.duration < 300,
+  });
+}
 
-        // [Theme 2 핵심 검증]
-        // AI가 5초 걸리든 말든, 서버는 "알겠습니다" 하고 즉시 응답해야 함.
-        // 200ms 이내에 응답이 오는지 확인 (Blocking이면 여기서 실패함)
-        'is async fast': (r) => r.timings.duration < 200,
-    });
-
-    // 실패 시 로그 출력 (디버깅용)
-    if (res.status !== 200 || res.timings.duration >= 200) {
-        console.error(`Status: ${res.status} | Duration: ${res.timings.duration}ms | Body: ${res.body ? res.body.substring(0, 100) : ''}`);
-    }
+export function handleSummary(data) {
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  return {
+    stdout: textSummary(data, { indent: '  ', enableColors: true }),
+    [`docs/perf/k6/theme2-async-${ts}.json`]: JSON.stringify(data, null, 2),
+  };
 }
