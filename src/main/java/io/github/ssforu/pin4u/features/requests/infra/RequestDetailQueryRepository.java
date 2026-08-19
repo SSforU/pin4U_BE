@@ -62,14 +62,15 @@ public interface RequestDetailQueryRepository extends Repository<Place, Long> {
         CAST(pm.image_urls AS TEXT)                             AS mock_image_urls_json,
         CAST(pm.opening_hours AS TEXT)                          AS mock_opening_hours_json,
         CAST(pm.review_snippets AS TEXT)                        AS mock_review_snippets_json,
-        NULL::TEXT                                              AS ai_summary_text,
-        NULL::TEXT                                              AS ai_evidence_json,
-        NULL::timestamptz                                       AS ai_updated_at
+        ps.summary_text                                        AS ai_summary_text,
+        ps.evidence                                            AS ai_evidence_json,
+        ps.updated_at                                          AS ai_updated_at
     FROM requests r
     JOIN stations s               ON s.code = r.station_code
     JOIN request_place_aggregates rpa ON rpa.request_id = r.slug
     JOIN places p                 ON p.id = rpa.place_id
     LEFT JOIN place_mock pm       ON pm.external_id = p.external_id
+    LEFT JOIN place_summaries ps  ON ps.place_id = p.id
     WHERE r.slug = :slug
     ORDER BY rpa.recommended_count DESC, distance_m ASC
     LIMIT :limit

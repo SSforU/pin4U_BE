@@ -2,8 +2,6 @@ package io.github.ssforu.pin4u.features.requests.application;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.ssforu.pin4u.features.places.application.MockAllocator;
-import io.github.ssforu.pin4u.features.places.domain.PlaceMock;
 import io.github.ssforu.pin4u.features.requests.domain.Request;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.*;
@@ -31,30 +29,23 @@ public class RequestDetailServiceImpl implements RequestDetailService {
     private final StationRepository stationRepository;
     private final RequestDetailQueryRepository queryRepository;
     private final RequestPlaceNotesQueryRepository notesQueryRepository;
-    private final AiSummaryService aiSummaryService;
     private final ObjectMapper objectMapper;
-    private final MockAllocator mockAllocator;
 
     public RequestDetailServiceImpl(
             RequestRepository requestRepository,
             StationRepository stationRepository,
             RequestDetailQueryRepository queryRepository,
             RequestPlaceNotesQueryRepository notesQueryRepository,
-            AiSummaryService aiSummaryService,
-            ObjectMapper objectMapper,
-            MockAllocator mockAllocator
+            ObjectMapper objectMapper
     ) {
         this.requestRepository = requestRepository;
         this.stationRepository = stationRepository;
         this.queryRepository = queryRepository;
         this.notesQueryRepository = notesQueryRepository;
-        this.aiSummaryService = aiSummaryService;
         this.objectMapper = objectMapper;
-        this.mockAllocator = mockAllocator;
     }
 
     @Override
-    @Transactional
     public RequestDetailResponse getRequestDetail(String slug, Integer limit, boolean includeAi) {
         Request req = requestRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "request not found"));
@@ -78,6 +69,15 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                 );
             }
 
+            // AI 요약은 쿼리 결과에서 직접 가져옴 (외부 API 호출 없음)
+            Ai ai = null;
+            SummaryStatus summaryStatus = SummaryStatus.PENDING;
+            String summaryText = r.getAi_summary_text();
+            if (summaryText != null && !summaryText.isBlank()) {
+                ai = new Ai(summaryText, r.getAi_evidence_json(), r.getAi_updated_at());
+                summaryStatus = SummaryStatus.READY;
+            }
+
             items.add(new Item(
                     r.getExternal_id(),
                     r.getId_stripped(),
@@ -92,87 +92,10 @@ public class RequestDetailServiceImpl implements RequestDetailService {
                     r.getDistance_m(),
                     r.getPlace_url(),
                     mock,
-                    null,
+                    ai,
+                    summaryStatus,
                     r.getRecommended_count()
             ));
-        }
-
-        Set<String> need = items.stream()
-                .filter(it -> it.mock() == null)
-                .map(Item::externalId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        if (!need.isEmpty()) {
-            Map<String, PlaceMock> ensured = mockAllocator.ensureMocks(need);
-            // ★ 수정: .toList() 대신 .collect(Collectors.toList()) 사용하여 수정 가능하도록 변경
-            items = items.stream().map(cur -> {
-                if (cur.mock() != null) return cur;
-                PlaceMock pm = ensured.get(cur.externalId());
-                if (pm == null) return cur;
-                Mock filled = new Mock(
-                        pm.getRating() == null ? null : pm.getRating().doubleValue(),
-                        pm.getRatingCount(),
-                        parseJsonArrayOfString(pm.getImageUrlsJson()),
-                        parseJsonArrayOfString(pm.getOpeningHoursJson())
-                );
-                return new Item(
-                        cur.externalId(), cur.id(), cur.placeName(),
-                        cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
-                        cur.addressName(), cur.roadAddressName(),
-                        cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
-                        filled, cur.ai(), cur.recommendedCount()
-                );
-            }).collect(Collectors.toList());
-        } else {
-            // ★ 추가: items가 이미 채워져 있어도 수정 가능하도록 ArrayList로 변환
-            items = new ArrayList<>(items);
-        }
-
-        Map<String, List<String>> reviewSnippetsMap = new HashMap<>();
-        for (Row r : rows) {
-            List<String> rs = parseJsonArrayOfString(r.getMock_review_snippets_json());
-            if (rs != null && !rs.isEmpty()) {
-                reviewSnippetsMap.put(r.getExternal_id(), rs);
-            }
-        }
-
-        String[] externalIds = items.stream().map(Item::externalId).distinct().toArray(String[]::new);
-        Map<String, List<String>> userTagsMap = notesQueryTags(slug, externalIds);
-
-        ListIterator<Item> it = items.listIterator();
-        while (it.hasNext()) {
-            Item cur = it.next();
-
-            List<String> reviewSnippets = reviewSnippetsMap.get(cur.externalId());
-            List<String> userTags = userTagsMap.get(cur.externalId());
-
-            Double rating = (cur.mock() == null) ? null : cur.mock().rating();
-            Integer ratingCount = (cur.mock() == null) ? null : cur.mock().ratingCount();
-
-            Optional<String> summaryOpt = aiSummaryService.generateSummary(
-                    cur.placeName(), cur.categoryName(), rating, ratingCount, reviewSnippets, userTags
-            );
-
-            if (summaryOpt.isPresent()) {
-                String evidence = toEvidenceJson200(Map.of(
-                        "category_name", cur.categoryName(),
-                        "rating", rating,
-                        "rating_count", ratingCount,
-                        "review_snippets", (reviewSnippets == null ? List.of() : reviewSnippets),
-                        "user_tags", (userTags == null ? List.of() : userTags)
-                ));
-
-                Ai ai = new Ai(summaryOpt.get(), evidence, OffsetDateTime.now());
-
-                it.set(new Item(
-                        cur.externalId(), cur.id(), cur.placeName(),
-                        cur.categoryGroupCode(), cur.categoryGroupName(), cur.categoryName(),
-                        cur.addressName(), cur.roadAddressName(),
-                        cur.x(), cur.y(), cur.distanceM(), cur.placeUrl(),
-                        cur.mock(), ai, cur.recommendedCount()
-                ));
-            }
         }
 
         RequestDetailDtos.Station dtoStation = new RequestDetailDtos.Station(
@@ -180,15 +103,6 @@ public class RequestDetailServiceImpl implements RequestDetailService {
         );
 
         return new RequestDetailResponse(req.getSlug(), dtoStation, req.getRequestMessage(), items, null);
-    }
-
-    private Map<String, List<String>> notesQueryTags(String slug, String[] externalIds) {
-        if (externalIds == null || externalIds.length == 0) return Map.of();
-        return notesQueryRepository.findTagsAggByExternalIds(slug, externalIds).stream()
-                .collect(Collectors.toMap(
-                        RequestPlaceNotesQueryRepository.TagAgg::getExternal_id,
-                        row -> parseJsonArrayOfString(row.getTags_json())
-                ));
     }
 
     private List<String> parseJsonArrayOfString(String json) {
@@ -204,14 +118,5 @@ public class RequestDetailServiceImpl implements RequestDetailService {
         if (v == null) return null;
         if (v instanceof BigDecimal bd) return bd;
         return new BigDecimal(v.toString());
-    }
-
-    private String toEvidenceJson200(Map<String, ?> ev) {
-        try {
-            String s = objectMapper.writeValueAsString(ev);
-            return (s.length() <= 200) ? s : s.substring(0, 200);
-        } catch (Exception e) {
-            return null;
-        }
     }
 }

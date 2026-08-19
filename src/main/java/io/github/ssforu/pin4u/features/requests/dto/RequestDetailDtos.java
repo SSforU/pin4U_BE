@@ -32,6 +32,8 @@ public final class RequestDetailDtos {
             List<String> openingHours
     ) {}
 
+    public enum SummaryStatus { READY, PENDING, UNAVAILABLE }
+
     public record Item(
             String externalId,
             String id,
@@ -47,6 +49,7 @@ public final class RequestDetailDtos {
             String placeUrl,
             @JsonInclude(JsonInclude.Include.NON_NULL) Mock mock,
             @JsonInclude(JsonInclude.Include.NON_NULL) Ai ai,
+            SummaryStatus summaryStatus,
             @JsonProperty("recommended_count") Integer recommendedCount
     ) {}
 
