@@ -13,7 +13,9 @@ import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
 // ✅ member 패키지 구조에 맞게 User 사용
 import io.github.ssforu.pin4u.features.member.infra.UserRepository;
 import io.github.ssforu.pin4u.features.member.domain.User;
+import io.github.ssforu.pin4u.features.requests.event.RequestCreatedEvent;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,8 +34,9 @@ public class RequestServiceImpl implements RequestService {
     private final StationRepository stationRepository;
     private final SlugGenerator slugGenerator;
     private final RequestPlaceAggregateRepository rpaRepository;
-    private final GroupRepository groupRepository; // ✅ 그룹 조회 의존성
-    private final UserRepository userRepository;   // ✅ 오너 닉네임 조회 의존성
+    private final GroupRepository groupRepository;
+    private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     private static final Map<String, String> LEGACY_ALIAS = Map.of(
             "7-733", "S0701"
@@ -49,13 +52,15 @@ public class RequestServiceImpl implements RequestService {
                               SlugGenerator slugGenerator,
                               RequestPlaceAggregateRepository rpaRepository,
                               GroupRepository groupRepository,
-                              UserRepository userRepository) {        // ✅ 추가
+                              UserRepository userRepository,
+                              ApplicationEventPublisher eventPublisher) {
         this.requestRepository = requestRepository;
         this.stationRepository = stationRepository;
         this.slugGenerator = slugGenerator;
         this.rpaRepository = rpaRepository;
         this.groupRepository = groupRepository;
-        this.userRepository = userRepository;                       // ✅ 추가
+        this.userRepository = userRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -93,7 +98,10 @@ public class RequestServiceImpl implements RequestService {
                 new Request(slug, ownerUserId, normalizedCode, groupId, requestMessage)
         );
 
-        // 4) 응답
+        // 4) AI 요약 생성 이벤트 발행 (커밋 후 비동기 처리)
+        eventPublisher.publishEvent(new RequestCreatedEvent(saved.getSlug(), ownerUserId));
+
+        // 5) 응답
         return new RequestDtos.CreatedRequestDTO(
                 saved.getSlug(),
                 saved.getStationCode(),

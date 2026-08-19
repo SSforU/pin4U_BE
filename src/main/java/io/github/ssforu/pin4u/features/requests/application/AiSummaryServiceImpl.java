@@ -60,15 +60,7 @@ public class AiSummaryServiceImpl implements AiSummaryService {
     @Override
     @Transactional
     public void generateAndSaveSummary(String requestSlug) {
-        // 1. [Simulation] AI API 호출 지연 시뮬레이션 (3초)
-        try {
-            log.info("⏳ [AI] Simulating long running task for request: {}", requestSlug);
-            Thread.sleep(3000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        // 2. 요청에 포함된 장소들 조회
+        // 요청에 포함된 장소들 조회
         var aggregates = rpaRepository.findAllByRequestId(requestSlug);
 
         for (var agg : aggregates) {
