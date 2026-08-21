@@ -4,14 +4,12 @@ import io.github.ssforu.pin4u.features.places.domain.Place;
 import io.github.ssforu.pin4u.features.places.domain.PlaceSummary;
 import io.github.ssforu.pin4u.features.places.infra.PlaceRepository;
 import io.github.ssforu.pin4u.features.places.infra.PlaceSummaryRepository;
-import io.github.ssforu.pin4u.features.requests.domain.RequestPlaceAggregate;
 import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepository;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * AiSummaryServiceImpl의 트랜잭션 경계를 분리하기 위한 헬퍼.

@@ -1,12 +1,11 @@
 package io.github.ssforu.pin4u.features.places.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 import java.util.Random;
+import org.springframework.stereotype.Component;
 
 @Component
 public class MockDataGenerator {

@@ -2,17 +2,14 @@ package io.github.ssforu.pin4u.features.requests.api;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.requests.application.RequestDetailService;
-import io.github.ssforu.pin4u.features.requests.domain.AiSummaryJob;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDetailDtos.RequestDetailResponse;
 import io.github.ssforu.pin4u.features.requests.infra.AiSummaryJobRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
-import java.util.Map;
 
 @Tag(name = "Requests")
 @RestController

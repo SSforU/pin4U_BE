@@ -1,11 +1,10 @@
 package io.github.ssforu.pin4u.features.requests.application;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.transaction.annotation.Transactional;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * AiSummaryServiceImpl.generateAndSaveSummary에 @Transactional이 없음을 검증.

@@ -3,13 +3,11 @@ package io.github.ssforu.pin4u.features.places.api;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.places.application.PlaceSearchService;
 import io.github.ssforu.pin4u.features.places.dto.PlaceDtos;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
-
-// ✅ Swagger 문서용 어노테이션 import
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 
 @Tag(name = "Places")
 @RestController

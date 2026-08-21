@@ -1,11 +1,10 @@
 package io.github.ssforu.pin4u.features.notifications.infra;
 
+import java.time.Instant;
+import java.util.List;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
-
-import java.time.Instant;
-import java.util.List;
 
 public interface NotificationsQueryRepository extends Repository<io.github.ssforu.pin4u.features.groups.domain.Group, Long> {
 

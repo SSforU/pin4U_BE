@@ -1,9 +1,14 @@
 package io.github.ssforu.pin4u.common.resolver;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+
 import io.github.ssforu.pin4u.common.annotation.LoginUser;
 import io.github.ssforu.pin4u.common.auth.AuthTokenProvider;
 import io.github.ssforu.pin4u.features.member.infra.UserRepository;
 import jakarta.servlet.http.Cookie;
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
@@ -11,12 +16,6 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.lang.reflect.Method;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 
 class LoginUserArgumentResolverTest {
 

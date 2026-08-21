@@ -1,11 +1,10 @@
 package io.github.ssforu.pin4u.features.requests.domain;
 
 import jakarta.persistence.*;
+import java.time.OffsetDateTime;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "ai_summary_job")

@@ -7,16 +7,15 @@ import io.github.ssforu.pin4u.features.groups.domain.Group;
 import io.github.ssforu.pin4u.features.groups.dto.GroupDtos;
 import io.github.ssforu.pin4u.features.groups.dto.GroupDtos.MemberRequestListResponse;
 import io.github.ssforu.pin4u.features.groups.dto.GroupDtos.MyMemberStatusResponse;
-import io.github.ssforu.pin4u.features.member.infra.UserRepository;
-import io.github.ssforu.pin4u.features.member.domain.User;
 import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
+import io.github.ssforu.pin4u.features.member.domain.User;
+import io.github.ssforu.pin4u.features.member.infra.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @Tag(name = "Groups")
 @RestController

@@ -1,12 +1,12 @@
 package io.github.ssforu.pin4u.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.ssforu.pin4u.features.groups.application.GroupMapService;
 import io.github.ssforu.pin4u.features.home.application.HomeService;
 import io.github.ssforu.pin4u.features.requests.application.RequestDetailServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.annotation.Transactional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * readOnly=true 메서드가 실제로 readOnly로 선언되어 있는지 반사적으로 검증.

@@ -2,9 +2,9 @@
 package io.github.ssforu.pin4u.features.member.domain;
 
 import jakarta.persistence.*;
+import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import java.time.Instant;
 
 @Entity
 @Table(name = "users")

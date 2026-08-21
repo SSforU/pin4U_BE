@@ -1,15 +1,14 @@
 package io.github.ssforu.pin4u.common;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.ssforu.pin4u.features.places.infra.KakaoSearchAdapterImpl;
 import io.github.ssforu.pin4u.features.recommendations.application.AiKeywordServiceImpl;
 import io.github.ssforu.pin4u.features.requests.application.AiSummaryServiceImpl;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.Method;
 import java.util.Arrays;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * Resilience4j 애노테이션의 fallback 메서드 시그니처가 올바른지 검증.

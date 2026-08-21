@@ -1,13 +1,12 @@
 package io.github.ssforu.pin4u.features.requests.infra;
 
 import io.github.ssforu.pin4u.features.places.domain.Place;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.query.Param;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 
 public interface RequestPlaceNotesQueryRepository extends Repository<Place, Long> {
 

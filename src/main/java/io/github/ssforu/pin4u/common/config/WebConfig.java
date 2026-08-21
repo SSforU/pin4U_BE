@@ -1,6 +1,7 @@
 package io.github.ssforu.pin4u.common.config;
 
 import io.github.ssforu.pin4u.common.resolver.LoginUserArgumentResolver;
+import java.util.List;
 import org.apache.catalina.filters.RateLimitFilter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,8 +11,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import java.util.List;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {

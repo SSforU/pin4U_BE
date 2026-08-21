@@ -2,16 +2,13 @@ package io.github.ssforu.pin4u.features.groups.api;
 
 import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-
-// Swagger (문서 표시용 - 선택)
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Groups")
 @RestController

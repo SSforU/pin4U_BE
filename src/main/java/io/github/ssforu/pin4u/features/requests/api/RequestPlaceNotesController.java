@@ -2,12 +2,10 @@ package io.github.ssforu.pin4u.features.requests.api;
 
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.requests.application.RequestPlaceNotesService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-
-// ✅ Swagger 문서용 어노테이션 import
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Requests")
 @RestController
