@@ -1,7 +1,7 @@
 package io.github.ssforu.pin4u.features.requests.infra;
 
-import org.springframework.stereotype.Component;
 import java.security.SecureRandom;
+import org.springframework.stereotype.Component;
 
 @Component
 public class SlugGenerator {

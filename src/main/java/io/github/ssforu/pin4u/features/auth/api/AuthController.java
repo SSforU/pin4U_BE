@@ -4,21 +4,18 @@ import io.github.ssforu.pin4u.common.annotation.LoginUser;
 import io.github.ssforu.pin4u.common.auth.AuthTokenProvider;
 import io.github.ssforu.pin4u.features.auth.application.AuthService;
 import io.github.ssforu.pin4u.features.auth.dto.AuthDtos;
-import io.github.ssforu.pin4u.features.member.domain.User;
 import io.github.ssforu.pin4u.features.member.infra.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.Duration;
-
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @Tag(name = "Auth")
 @RestController

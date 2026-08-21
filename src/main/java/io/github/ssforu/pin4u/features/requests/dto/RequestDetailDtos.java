@@ -2,7 +2,6 @@ package io.github.ssforu.pin4u.features.requests.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;

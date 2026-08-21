@@ -3,15 +3,11 @@ package io.github.ssforu.pin4u.features.member.api;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.features.member.application.MemberService;
 import io.github.ssforu.pin4u.features.member.dto.MemberDtos;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
-
-// ✅ Swagger 문서용 어노테이션 import
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Member")
 @RestController

@@ -53,7 +53,9 @@ resource "aws_security_group" "ec2" {
   description = "Security group for EC2"
   vpc_id      = aws_vpc.main.id
 
-  # App Port
+  # App Port — ALB 없는 단일 EC2 구조에서 클라이언트 직접 접근이 필요하므로 0.0.0.0/0 허용.
+  # 운영 전환 시 ALB를 도입하고 이 규칙을 ALB SG 참조로 교체할 것.
+  # Actuator는 management.server.port=9091로 분리되어 이 포트로 노출되지 않음.
   ingress {
     from_port   = 8080
     to_port     = 8080

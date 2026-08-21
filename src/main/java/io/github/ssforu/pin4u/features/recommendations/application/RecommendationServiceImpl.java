@@ -12,14 +12,13 @@ import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepos
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.stations.domain.Station;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RecommendationServiceImpl implements RecommendationService {

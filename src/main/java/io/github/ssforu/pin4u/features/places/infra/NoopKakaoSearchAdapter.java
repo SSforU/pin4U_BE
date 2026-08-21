@@ -4,11 +4,10 @@ import io.github.ssforu.pin4u.common.exception.ApiErrorCode;
 import io.github.ssforu.pin4u.common.exception.ApiException;
 import io.github.ssforu.pin4u.features.places.domain.KakaoPayload;
 import io.github.ssforu.pin4u.features.places.domain.KakaoSearchPort;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.stereotype.Component;
 
 /**
  * KakaoSearchPort 의 안전한 대체 구현.

@@ -1,10 +1,8 @@
 package io.github.ssforu.pin4u.features.places.api;
 
-import org.springframework.web.bind.annotation.*;
-
-// ✅ Swagger 문서용 어노테이션 import
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Places")
 @RestController

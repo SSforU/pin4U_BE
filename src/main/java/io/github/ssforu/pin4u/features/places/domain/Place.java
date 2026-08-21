@@ -2,8 +2,8 @@
 package io.github.ssforu.pin4u.features.places.domain;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.OffsetDateTime;
+import lombok.*;
 
 @Entity
 @Table(name = "places")

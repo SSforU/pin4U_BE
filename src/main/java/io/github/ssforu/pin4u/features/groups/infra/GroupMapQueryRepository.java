@@ -1,12 +1,11 @@
 package io.github.ssforu.pin4u.features.groups.infra;
 
 import io.github.ssforu.pin4u.features.places.domain.Place;
-import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.data.jpa.repository.Query;
-
 import java.time.OffsetDateTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 
 public interface GroupMapQueryRepository extends Repository<Place, Long> {
 

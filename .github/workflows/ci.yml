@@ -17,7 +17,7 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - run: ./gradlew build integrationTest jacocoTestReport
+      - run: ./gradlew spotlessCheck build integrationTest jacocoTestReport
 
       - uses: actions/upload-artifact@v4
         if: always()

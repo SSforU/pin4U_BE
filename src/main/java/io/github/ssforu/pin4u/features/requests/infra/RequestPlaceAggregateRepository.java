@@ -1,13 +1,12 @@
 package io.github.ssforu.pin4u.features.requests.infra;
 
 import io.github.ssforu.pin4u.features.requests.domain.RequestPlaceAggregate;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.util.List;
-import java.util.Optional;
 
 public interface RequestPlaceAggregateRepository extends JpaRepository<RequestPlaceAggregate, Long> {
 

@@ -4,11 +4,10 @@ import io.github.ssforu.pin4u.common.annotation.LoginUser;
 import io.github.ssforu.pin4u.common.config.UploadProps;
 import io.github.ssforu.pin4u.common.response.ApiResponse;
 import io.github.ssforu.pin4u.common.util.ImageKeyUtil;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.WebUtils;
-
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 record MakeKeyRequest(String slug, String filename) {}
 record MakeKeyResponse(String key, String public_url) {}

@@ -2,7 +2,6 @@ package io.github.ssforu.pin4u.features.home.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;

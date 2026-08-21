@@ -1,7 +1,7 @@
 // src/main/java/io/github/ssforu/pin4u/common/config/SwaggerConfig.java
 package io.github.ssforu.pin4u.common.config;
 
-import io.swagger.v3.oas.models.Components;               // ✅ 올바른 import
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;

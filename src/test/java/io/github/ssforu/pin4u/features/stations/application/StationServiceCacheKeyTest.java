@@ -1,8 +1,8 @@
 package io.github.ssforu.pin4u.features.stations.application;
 
-import org.junit.jupiter.api.Test;
-
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
 
 /**
  * StationServiceImpl.normalizeKey의 캐시 키 정규화 단위 테스트.

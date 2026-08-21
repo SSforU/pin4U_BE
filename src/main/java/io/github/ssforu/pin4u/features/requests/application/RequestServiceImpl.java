@@ -2,29 +2,25 @@ package io.github.ssforu.pin4u.features.requests.application;
 
 import io.github.ssforu.pin4u.features.groups.domain.Group;
 import io.github.ssforu.pin4u.features.groups.infra.GroupRepository;
+import io.github.ssforu.pin4u.features.member.domain.User;
+import io.github.ssforu.pin4u.features.member.infra.UserRepository;
 import io.github.ssforu.pin4u.features.requests.domain.Request;
 import io.github.ssforu.pin4u.features.requests.dto.RequestDtos;
+import io.github.ssforu.pin4u.features.requests.event.RequestCreatedEvent;
 import io.github.ssforu.pin4u.features.requests.infra.RequestPlaceAggregateRepository;
 import io.github.ssforu.pin4u.features.requests.infra.RequestRepository;
 import io.github.ssforu.pin4u.features.requests.infra.SlugGenerator;
 import io.github.ssforu.pin4u.features.stations.domain.Station;
 import io.github.ssforu.pin4u.features.stations.infra.StationRepository;
-
-// ✅ member 패키지 구조에 맞게 User 사용
-import io.github.ssforu.pin4u.features.member.infra.UserRepository;
-import io.github.ssforu.pin4u.features.member.domain.User;
-import io.github.ssforu.pin4u.features.requests.event.RequestCreatedEvent;
-
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
