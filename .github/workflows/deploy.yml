@@ -3,6 +3,7 @@ name: Deploy to AWS
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 env:
   AWS_REGION: ap-northeast-2
@@ -11,6 +12,10 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # 배포 게이트: DEPLOY_ENABLED 변수가 'true'이거나 수동 실행(workflow_dispatch)일 때만 동작.
+    # 레포지토리 Settings > Variables에서 DEPLOY_ENABLED를 설정하지 않으면 자동 배포 비활성화.
+    # 배포하고 싶을 때: (1) 변수를 'true'로 설정하거나 (2) Actions에서 수동 실행.
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ENABLED == 'true'
 
     steps:
       - uses: actions/checkout@v4
