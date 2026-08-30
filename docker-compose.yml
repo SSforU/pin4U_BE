@@ -1,7 +1,4 @@
-version: '3.8'
-
 services:
-  # 1. PostgreSQL (App 전용 DB)
   db:
     image: postgres:16
     container_name: pin4u-db
@@ -13,25 +10,28 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts:/scripts:ro
     networks:
       - monitoring
-    # DB 헬스체크 (App이 DB 뜰 때까지 대기용)
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pin4u -d pin4u_be"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # 2. Redis (캐싱용)
   redis:
-    image: redis:alpine
+    image: redis:7-alpine
     container_name: pin4u-redis
     ports:
       - "6379:6379"
     networks:
       - monitoring
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-  # 3. Redis Exporter (Redis 모니터링 -> Prometheus 연결)
   redis_exporter:
     image: oliver006/redis_exporter
     container_name: redis_exporter
@@ -40,49 +40,36 @@ services:
     command:
       - '--redis.addr=redis://redis:6379'
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - monitoring
 
-  # 4. Spring Boot Application
   app:
     build: .
     container_name: spring-app
     ports:
       - "8080:8080"
     environment:
-      # [핵심] Docker 환경에 맞는 설정 강제 주입 (yml 파일보다 우선순위 높음)
       SPRING_PROFILES_ACTIVE: prod
-
-      # 1. DB 연결 (localhost -> db)
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/pin4u_be
       SPRING_DATASOURCE_USERNAME: pin4u
       SPRING_DATASOURCE_PASSWORD: password
-
-      # 2. Redis 연결 (localhost -> redis)
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-
-      # 3. Flyway 활성화 (빈 DB에 테이블 생성 필수)
       SPRING_FLYWAY_ENABLED: "true"
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
-
-      # 4. 모니터링 엔드포인트 강제 노출
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,metrics,info,prometheus"
       MANAGEMENT_ENDPOINT_PROMETHEUS_ENABLED: "true"
-
-      # 5. 성능 테스트용 JVM 힙 메모리 확보
       JAVA_OPTS: "-Xms512m -Xmx1536m"
-
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     networks:
       - monitoring
 
-  # 5. Prometheus (데이터 수집)
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -93,7 +80,6 @@ services:
     networks:
       - monitoring
 
-  # 6. Grafana (데이터 시각화)
   grafana:
     image: grafana/grafana
     container_name: grafana
@@ -112,7 +98,6 @@ services:
 volumes:
   postgres_data:
   grafana_data:
-  redis_data:
 
 networks:
   monitoring:
