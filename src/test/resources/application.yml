@@ -17,3 +17,10 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
+  jpa:
+    open-in-view: false
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN

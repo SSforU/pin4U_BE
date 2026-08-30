@@ -76,7 +76,7 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql'
 }
 
-tasks.withType(Test).configureEach {
+tasks.named('test') {
     useJUnitPlatform {
         excludeTags 'integration'
     }
@@ -85,6 +85,8 @@ tasks.withType(Test).configureEach {
 tasks.register('integrationTest', Test) {
     description = 'Runs integration tests requiring Docker (Testcontainers)'
     group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
     useJUnitPlatform {
         includeTags 'integration'
     }
